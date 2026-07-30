@@ -1,7 +1,5 @@
 # 2D Material Band Structure Visualizer for Raspberry Pi 4B
 
-基于树莓派4B的二维材料能带结构可视化工具。
-
 ---
 
 ## 1. 项目概述
@@ -123,52 +121,6 @@ flowchart TD
   - 使用 `logging` 记录运行日志，便于调试；
   - 使用 `configparser` 或 JSON 管理应用配置；
   - 定义统一错误码与提示信息，向 GUI 反馈异常。
-
----
-
-## 6. 推荐项目结构
-
-```
-.
-├── README.md
-├── requirements.txt
-├── main.py
-├── config/
-│   └── default_config.json
-├── src/
-│   ├── __init__.py
-│   ├── parser/              # pymatgen 解析器封装
-│   │   ├── __init__.py
-│   │   └── vasp_parser.py
-│   ├── models/              # 内部数据模型
-│   │   ├── __init__.py
-│   │   ├── band_data.py
-│   │   ├── dos_data.py
-│   │   └── material_info.py
-│   ├── compute/             # NumPy / SciPy 计算
-│   │   ├── __init__.py
-│   │   ├── band_processor.py
-│   │   ├── gap_calculator.py
-│   │   └── projector.py
-│   ├── storage/             # SQLite + JSON 持久化
-│   │   ├── __init__.py
-│   │   ├── database.py
-│   │   └── config_manager.py
-│   ├── plotter/             # Matplotlib 绘图
-│   │   ├── __init__.py
-│   │   ├── band_plotter.py
-│   │   ├── dos_plotter.py
-│   │   └── projected_band_plotter.py
-│   └── gui/                 # PyQt5 界面
-│       ├── __init__.py
-│       ├── main_window.py
-│       ├── widgets/
-│       └── workers/
-├── tests/                   # 单元测试与示例数据
-│   ├── sample_data/
-│   └── test_parser.py
-└── docs/                    # 额外文档（可选）
-```
 
 ---
 
