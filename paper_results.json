@@ -1,0 +1,100 @@
+{
+  "analysis": {
+    "graphene": {
+      "nk": 58,
+      "nb": 8,
+      "ne": 8,
+      "gap": {
+        "gap": 0.0129,
+        "direct": false,
+        "vbm": -0.0,
+        "cbm": 0.0129,
+        "vbm_k": 38,
+        "cbm_k": 37
+      },
+      "masses": {
+        "vbm_mass": -5.0322,
+        "cbm_mass": 5.7355
+      },
+      "labels": [
+        [
+          0,
+          "Γ"
+        ],
+        [
+          19,
+          "M"
+        ],
+        [
+          38,
+          "K"
+        ],
+        [
+          57,
+          "Γ"
+        ]
+      ]
+    },
+    "mos2": {
+      "nk": 58,
+      "nb": 12,
+      "ne": 18,
+      "gap": {
+        "gap": 1.8,
+        "direct": true,
+        "vbm": -0.9,
+        "cbm": 0.9,
+        "vbm_k": 38,
+        "cbm_k": 38
+      },
+      "masses": {
+        "vbm_mass": -30.1258,
+        "cbm_mass": 30.1258
+      },
+      "labels": [
+        [
+          0,
+          "Γ"
+        ],
+        [
+          19,
+          "M"
+        ],
+        [
+          38,
+          "K"
+        ],
+        [
+          57,
+          "Γ"
+        ]
+      ]
+    }
+  },
+  "performance": {
+    "graphene": {
+      "nk": 58,
+      "nb": 8,
+      "size_mb": 0.02,
+      "parse_s": 0.0058,
+      "dos_s": 0.0367,
+      "peak_mb": 11.23
+    },
+    "mos2": {
+      "nk": 58,
+      "nb": 12,
+      "size_mb": 0.029,
+      "parse_s": 0.0065,
+      "dos_s": 0.0447,
+      "peak_mb": 16.8
+    },
+    "mos2_x4": {
+      "nk": 232,
+      "nb": 12,
+      "size_mb": 0.116,
+      "parse_s": 0.0211,
+      "dos_s": 0.1876,
+      "peak_mb": 66.95
+    }
+  }
+}

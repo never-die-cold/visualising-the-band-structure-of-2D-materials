@@ -1,181 +1,138 @@
-# 2D Material Band Structure Visualizer for Raspberry Pi 4B
+# 2D Material Band Structure Visualizer
+
+> 基于 Raspberry Pi 4B 的二维材料能带结构可视化工具
+
+直接从 VASP 的 `EIGENVAL` 与 `KPOINTS` 文件读取数据，实时绘制能带图与态密度图（DOS），并自动计算带隙、有效质量等关键参数。
+
+![软件主界面](paper_figures/fig_gui_main.png)
 
 ---
 
-## 1. 项目概述
+## 功能特性
 
-本项目旨在树莓派 4B（ARM64 / ARMv7）平台上，开发一款面向二维材料第一性原理计算结果的可视化工具。数据来源为 **VASP** 计算输出，解析层采用 **pymatgen** 提取能带与投影信息，后端以 **Python 标准库 + NumPy** 完成数据处理，使用 **SciPy** 提供插值、平滑等辅助计算，通过 **SQLite + JSON** 持久化计算元数据与配置，最终由 **PyQt5** 构建桌面前端，并借助 **Matplotlib** 渲染能带结构图、态密度图、投影能带图等。
-
----
-
-## 2. 运行环境
-
-- 硬件：Raspberry Pi 4B（4GB / 8GB RAM 推荐）
-- 操作系统：Raspberry Pi OS 64-bit（Bookworm 或更新）
-- Python：3.9+
-- 显示：可直接接入 HDMI 显示器，或通过网络 VNC 远程使用
+- **能带结构可视化** — 自动读取 EIGENVAL + KPOINTS，绘制带高对称点标注的能带图
+- **态密度（DOS）** — 基于高斯展宽实时计算总 DOS、价带 DOS、导带 DOS
+- **带隙分析** — 自动判断直接/间接带隙，计算 VBM / CBM
+- **有效质量估算** — 在带边附近抛物线拟合估算有效质量
+- **后台解析** — 使用 QThread 异步解析，大文件不卡界面
+- **配置持久化** — JSON 保存用户设置，SQLite 记录计算历史
+- **文件树管理** — 左侧目录浏览器 + 最近文件列表，双击即加载
+- **导出图片** — 支持 PNG / SVG 高清导出
 
 ---
 
-## 3. 技术栈
-
-| 模块 | 选型 | 说明 |
-|------|------|------|
-| 计算数据源 | VASP | `vasprun.xml`、`OUTCAR`、`KPOINTS` 等 |
-| 数据解析 | pymatgen | 解析能带、态密度、投影、结构信息 |
-| 数值计算 | NumPy + SciPy | 数组运算、插值、平滑、拟合 |
-| 基础后端 | Python 标准库 | 文件 IO、进程管理、日志、配置、缓存 |
-| 数据存储 | SQLite + JSON | 元数据与索引存 SQLite；配置与导出数据存 JSON |
-| 图表渲染 | Matplotlib | 能带图、DOS 图、投影能带热图等 |
-| 前端 GUI | PyQt5 | 跨平台桌面界面，适配树莓派触屏/键鼠 |
-
----
-
-## 4. 系统架构与流程图
-
-```mermaid
-flowchart TD
-    A[VASP 输出文件<br/>vasprun.xml / OUTCAR / KPOINTS] -->|读取| B[数据解析层<br/>pymatgen]
-    B -->|BandStructure / Dos / Structure| C[数据模型层<br/>Python 标准库 + 自定义对象]
-    C -->|数值处理| D[计算层<br/>NumPy + SciPy]
-    D -->|能带对齐 / 插值 / 平滑 / 投影统计| E[可视化层<br/>Matplotlib]
-    C -->|元数据 / 配置| F[持久化层<br/>SQLite + JSON]
-    F -->|查询 / 缓存| C
-    E -->|嵌入 FigureCanvas| G[前端 GUI<br/>PyQt5]
-    G -->|用户操作<br/>选择文件 / 设置参数 / 导出| H[控制层<br/>Python 标准库]
-    H -->|触发解析 / 计算 / 渲染| C
-    H -->|保存配置 / 历史记录| F
-```
-
----
-
-## 5. 各模块具体实现目标
-
-### 5.1 数据解析层（pymatgen）
-
-- **目标**：稳定读取 VASP 输出，抽象为统一数据模型。
-- **实现要点**：
-  - 使用 `pymatgen.io.vasp.outputs.Vasprun` 解析 `vasprun.xml`；
-  - 使用 `pymatgen.io.vasp.outputs.Outcar` 读取额外信息（如磁矩、能带占据）；
-  - 使用 `pymatgen.io.vasp.inputs.Kpoints` 获取高对称点路径与标签；
-  - 兼容 `pymatgen.electronic_structure` 中的 `BandStructure`、`Dos`、`CompleteDos`；
-  - 异常处理：文件缺失、解析失败、计算未收敛时给出友好提示。
-
-### 5.2 数据模型层（Python 标准库）
-
-- **目标**：定义项目内部统一的数据结构，隔离 pymatgen 与上层逻辑。
-- **实现要点**：
-  - 定义 `BandData`、`DosData`、`ProjectedData`、`MaterialInfo` 等数据类；
-  - 使用 `dataclasses` 或 `typing.NamedTuple` 降低内存开销；
-  - 提供数据校验、单位转换、版本化序列化接口；
-  - 管理文件路径、计算任务 ID、标签等元信息。
-
-### 5.3 计算层（NumPy + SciPy）
-
-- **目标**：高性能完成能带数据处理与科学计算。
-- **实现要点**：
-  - 使用 NumPy 进行 k 点距离累加、能量对齐、能带裁剪、高对称点标注；
-  - 使用 SciPy 实现能带曲线的插值（`scipy.interpolate`）与平滑（`scipy.ndimage` / `savgol_filter`）；
-  - 支持费米能级对齐、直接/间接带隙计算、有效质量近似估算；
-  - 投影能带：按元素、轨道、自旋通道进行权重统计与归一化；
-  - 计算结果缓存，避免重复解析大文件。
-
-### 5.4 持久化层（SQLite + JSON）
-
-- **目标**：持久化计算元数据、用户配置与历史记录，支持快速检索。
-- **实现要点**：
-  - **SQLite**：
-    - 存储任务表（路径、名称、体系、晶格常数、带隙、计算时间戳）；
-    - 存储高对称点路径、能量范围、图形参数等历史记录；
-    - 支持按材料、时间、带隙范围查询。
-  - **JSON**：
-    - 存储用户全局配置（主题、默认能量范围、导出格式）；
-    - 存储单次计算的导出结果（如能带数据、投影权重），便于后续复现或离线分析。
-
-### 5.5 可视化层（Matplotlib）
-
-- **目标**：生成高质量、可交互的二维材料能带图与态密度图。
-- **实现要点**：
-  - 能带结构图：k 点路径、高对称点标签、费米能级参考线、多自旋绘制；
-  - 总态密度 / 分波态密度（TDOS / PDOS）图；
-  - 投影能带图：使用颜色映射（colormap）表示原子/轨道投影权重；
-  - 支持图形主题、字体大小、导出分辨率配置；
-  - 在树莓派上采用 `Agg` / `Qt5Agg` 后端，确保渲染流畅。
-
-### 5.6 前端 GUI（PyQt5）
-
-- **目标**：提供直观的桌面操作界面，适配树莓派使用场景。
-- **实现要点**：
-  - 主窗口：侧边栏导航 + 中央 Matplotlib 画布区；
-  - 文件管理：浏览/拖拽 VASP 文件、最近打开列表、任务列表；
-  - 参数面板：设置能量范围、高对称点路径、投影元素/轨道、颜色主题；
-  - 交互功能：缩放、平移、保存图片、导出数据、一键重绘；
-  - 状态栏与进度条：显示解析/计算/渲染进度；
-  - 在树莓派上限制后台线程数，避免阻塞 GUI。
-
-### 5.7 控制层（Python 标准库）
-
-- **目标**：协调各模块工作，处理用户事件与异步任务。
-- **实现要点**：
-  - 使用 `threading` 或 `concurrent.futures` 在后台执行解析与计算；
-  - 使用 `logging` 记录运行日志，便于调试；
-  - 使用 `configparser` 或 JSON 管理应用配置；
-  - 定义统一错误码与提示信息，向 GUI 反馈异常。
-
----
-
-## 7. 快速开始
-
-### 7.1 安装依赖
+## 快速开始
 
 ```bash
-# 在树莓派上建议使用虚拟环境
-python3 -m venv venv
-source venv/bin/activate
-
-pip install --upgrade pip
+# 1. 安装依赖
 pip install -r requirements.txt
-```
 
-### 7.2 运行程序
-
-```bash
+# 2. 运行
 python main.py
 ```
 
-### 7.3 加载 VASP 数据
+程序启动后，左侧文件树会自动扫描 `data/example/` 下的示例数据。双击 **graphene** 或 **mos2** 即可加载并查看能带图与 DOS 图。
 
-1. 点击“打开文件”选择 `vasprun.xml`；
-2. 在参数面板设置能量范围、投影元素/轨道；
-3. 点击“绘制”查看能带图或态密度图；
-4. 使用“导出”保存图片（PNG/PDF）或数据（JSON）。
+### 基本操作
+
+| 操作 | 说明 |
+|------|------|
+| 加载文件 | 点击 **Load EIGENVAL** 或双击文件树中的 `EIGENVAL` |
+| 切换视图 | 中央 Tab 切换 **Band Structure** / **DOS** |
+| 调节参数 | 右侧面板设置费米能级、能量范围、DOS 展宽 σ |
+| 导出图片 | 点击 **Save PNG** / **Save SVG** |
 
 ---
 
-## 8. 依赖列表（requirements.txt 示例）
+## 示例结果
 
-```text
-PyQt5>=5.15
-matplotlib>=3.5
-numpy>=1.21
-scipy>=1.7
-pymatgen>=2023.0
+使用 `data/example/` 中自带的石墨烯与单层 MoS₂ 示例数据（均为 58 k 点、Γ-M-K-Γ 路径）：
+
+| 材料 | VBM (eV) | CBM (eV) | 带隙 (eV) | 带隙类型 |
+|------|---------|----------|----------|----------|
+| 石墨烯 | 0.00 | 0.01 | ≈0.01 | 零带隙半金属（K 点附近线性色散） |
+| 单层 MoS₂ | −0.90 | 0.90 | 1.80 | 直接带隙（K 点） |
+
+| 石墨烯能带 | 单层 MoS₂ 能带 |
+|-----------|---------------|
+| ![石墨烯能带](paper_figures/fig_graphene_band.png) | ![MoS2 能带](paper_figures/fig_mos2_band.png) |
+
+DOS 支持高斯展宽参数调节（下图为 σ = 0.05 / 0.15 / 0.30 eV 的对比）：
+
+![DOS 展宽对比](paper_figures/fig_mos2_dos_sigma.png)
+
+### 性能参考
+
+在普通 PC（Python 3.12）上的实测数据（解析耗时 / 峰值内存）：
+
+| 测试文件 | k 点数 | 能带数 | 解析时间 | 峰值内存 |
+|---------|-------|-------|---------|---------|
+| 石墨烯 EIGENVAL | 58 | 8 | ~6 ms | ~11 MB |
+| 单层 MoS₂ EIGENVAL | 58 | 12 | ~7 ms | ~17 MB |
+| MoS₂ 扩展样例 | 232 | 12 | ~21 ms | ~67 MB |
+
+配合 QThread 后台解析，加载过程中界面保持响应。原始数据见 `paper_results.json`，复现脚本见 `paper_assets.py`。
+
+---
+
+## 技术栈
+
+| 层级 | 技术 | 说明 |
+|------|------|------|
+| 数据解析 | Python 标准库 + NumPy | 自定义 EIGENVAL / KPOINTS 解析器 |
+| 数值计算 | NumPy + SciPy | 数组运算、高斯展宽、抛物线拟合 |
+| 可视化 | Matplotlib + PyQt5 | `Qt5Agg` 后端，能带图 + DOS 图 |
+| 持久化 | SQLite + JSON | SQLite 存计算历史，JSON 存用户配置 |
+| 日志 | Python `logging` | 控制台 + 文件双输出 |
+| 并发 | PyQt5 `QThread` | 后台解析 worker，不阻塞 GUI |
+
+---
+
+## 项目结构
+
+```
+.
+├── main.py                      # 程序入口
+├── requirements.txt             # 依赖列表
+├── config/
+│   └── settings.json            # 用户配置（运行时自动创建，不入库）
+├── core/                        # 核心计算
+│   ├── parser.py                # EIGENVAL / KPOINTS 解析
+│   ├── band_analyzer.py         # 能带分析（带隙、有效质量）
+│   └── dos_analyzer.py          # DOS 计算
+├── gui/                         # 前端界面
+│   ├── main_window.py           # 主窗口
+│   ├── band_widget.py           # 能带图组件
+│   ├── dos_widget.py            # DOS 图组件
+│   ├── control_panel.py         # 控制面板
+│   ├── file_tree.py             # 文件树
+│   └── workers/
+│       └── parse_worker.py      # 后台解析线程
+├── storage/                     # 持久化
+│   ├── database.py              # SQLite 封装
+│   └── config_manager.py        # JSON 配置管理
+├── utils/
+│   └── logger.py                # 日志配置
+├── paper_assets.py              # 生成示例结果与插图的脚本
+├── screenshot_gui.py            # 离屏截取主界面的工具脚本
+├── paper_figures/               # README 与文档用图
+└── data/
+    └── example/                 # 示例数据（graphene / mos2 / mos2_x4）
 ```
 
-> 在树莓派上安装 PyQt5 与 Matplotlib 时，可能需要额外系统依赖，如 `libqt5gui5`、`python3-pyqt5`、`libfreetype6-dev` 等。
+---
+
+## 运行环境
+
+- **硬件**：Raspberry Pi 4B（4GB / 8GB RAM 推荐），普通 PC 亦可
+- **系统**：Raspberry Pi OS 64-bit（Bookworm 或更新）/ Windows / Linux
+- **Python**：3.9+
+- **显示**：HDMI 直连 或 VNC 远程
+
+> 树莓派上安装 PyQt5 可能需要额外系统包：`libqt5gui5`、`python3-pyqt5`、`libfreetype6-dev`
 
 ---
 
-## 9. 后续可扩展方向
-
-- 支持更多第一性原理计算软件（如 Quantum ESPRESSO、ABACUS）的输出；
-- 增加费米面 / 3D 能带可视化（受限于树莓派性能，可简化采样）；
-- 支持将 SQLite 数据上传至局域网内的 Web 服务端；
-- 增加能带对齐、异质结界面分析等进阶功能；
-- 适配触屏操作，优化树莓派小屏幕 UI 布局。
-
----
-
-## 10. 许可证
+## 许可证
 
 MIT License
