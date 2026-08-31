@@ -77,20 +77,34 @@ class VASPKpointsParser:
         with open(self.filepath, 'r') as f:
             raw_lines = f.readlines()
 
-        # 去掉空行和纯注释行，保留原内容用于提取标签
-        lines = [line.strip() for line in raw_lines]
-        content = [line for line in lines if line and not line.startswith('#')]
+        # 保留空行（用于 line-mode 分段），仅去掉纯注释行
+        lines = [line.rstrip('\n').rstrip('\r') for line in raw_lines]
+        content = [line.strip() for line in lines if not line.strip().startswith('#')]
 
         if len(content) < 4:
             return []
 
-        mode_line = content[2].lower()
+        # 判断模式
+        mode_line = content[2].lower() if len(content) > 2 else ''
+        coord_line = ''
+        for i in range(1, min(len(content), 6)):
+            if content[i].lower() in ('reciprocal', 'cartesian', 'rec', 'car'):
+                mode_line = content[i - 1].lower() if i > 0 else ''
+                coord_line = content[i].lower()
+                break
 
-        # 生成模式（Explicit）或 Line-Mode
         if 'line' in mode_line:
             return self._parse_line_mode(content)
         else:
             return self._parse_explicit_mode(content)
+
+    def _find_data_start(self, content: List[str]) -> int:
+        """找到 k-point 数据起始行索引"""
+        for i, line in enumerate(content):
+            stripped = line.lower()
+            if stripped in ('reciprocal', 'cartesian', 'rec', 'car'):
+                return i + 1
+        return 3  # fallback
 
     def _parse_line_mode(self, content: List[str]) -> List[Tuple[int, str]]:
         """解析 Line-Mode KPOINTS"""
@@ -99,14 +113,27 @@ class VASPKpointsParser:
         except ValueError:
             return []
 
-        # 从第 4 行开始读取线段端点对
+        data_start = self._find_data_start(content)
+        if data_start <= 0 or data_start >= len(content):
+            return []
+
+        # 按空行分组，每组为一对端点
         segment_pairs = []
-        i = 3
-        while i < len(content) - 1:
-            line1 = content[i]
-            line2 = content[i + 1]
-            segment_pairs.append((line1, line2))
-            i += 2
+        current_buf = []
+
+        for i in range(data_start, len(content)):
+            stripped = content[i]
+            if not stripped:
+                if len(current_buf) == 2:
+                    segment_pairs.append((current_buf[0], current_buf[1]))
+                current_buf = []
+                continue
+            if stripped.startswith('#'):
+                continue
+            current_buf.append(stripped)
+
+        if len(current_buf) == 2:
+            segment_pairs.append((current_buf[0], current_buf[1]))
 
         if not segment_pairs:
             return []
@@ -120,9 +147,9 @@ class VASPKpointsParser:
             start_idx = seg_idx * segment_length
             end_idx = (seg_idx + 1) * segment_length
 
-            if label1:
+            if label1 and start_idx not in [idx for idx, _ in labels]:
                 labels.append((start_idx, label1))
-            if label2:
+            if label2 and end_idx not in [idx for idx, _ in labels]:
                 labels.append((end_idx, label2))
 
         return labels
@@ -134,12 +161,17 @@ class VASPKpointsParser:
         except ValueError:
             return []
 
+        data_start = self._find_data_start(content)
+
         labels = []
         for i in range(num_kpoints):
-            line_idx = 3 + i
+            line_idx = data_start + i
             if line_idx >= len(content):
                 break
-            label = _extract_label_from_line(content[line_idx])
+            line = content[line_idx]
+            if not line or line.startswith('#'):
+                continue
+            label = _extract_label_from_line(line)
             if label:
                 labels.append((i, label))
 
