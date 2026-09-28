@@ -92,7 +92,8 @@ _register(MaterialPreset(
     key="silicene", name="硅烯", formula="Si2", category="蜂窝家族",
     engine="tb", structure_key="silicene",
     make_structure=build,
-    make_model=lambda: BuckledHoneycombModel(a=3.86, buckling=0.44, t=-1.6),
+    make_model=lambda electric_field=0.0: BuckledHoneycombModel(
+        a=3.86, buckling=0.44, t=-1.6, electric_field=electric_field),
     n_valence=1,
     gap_ref=None, gap_note="零场下无隙；垂直电场开启带隙 "
     "（K 点带隙 = |E·Δz|，可做电场调控演示）",
