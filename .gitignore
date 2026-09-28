@@ -21,3 +21,6 @@ config/settings.json
 *.docx
 ~$*
 logs/
+
+# 文献源码 (本地参考, 不入库)
+papers/arxiv/

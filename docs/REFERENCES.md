@@ -88,3 +88,20 @@
 
 ## 已删除/待定
 （无）
+
+## 待确认的约定（欢迎提供文献）
+
+1. **Nanoskif SK 方向/相位约定**（阻塞 Zahid sp³d⁵ 引擎的带隙验证）：
+   Zahid 2013 论文只给出 96 个拟合参数值，未写明其 Slater-Koster 表的
+   键方向约定与轨道相位约定（Nanoskif 软件内部约定）。当前实现已达成：
+   H(k)/S(k) 厄米、S(k) 正定（Gram 判据）、泛函本征值可解；
+   但带隙数值与文献目标（单层 K 点 1.805 eV）尚未吻合（当前 ~4.2 eV），
+   提示相位约定仍有系统差异。需要以下任一材料确认约定：
+   - Zahid F. 的博士论文（香港大学，含 Nanoskif sp³d⁵ 模型细节）；
+   - Nanoskif / NEMO-3D 的 sp³d⁵s* 模型文档：
+     G. Klimeck et al., *IEEE Trans. Electron Devices* / J. Comput. Electron.
+     中 NEMO 3-D 系列论文的 SOC 与 SK 约定附录；
+   - 或任何给出 sp³d⁵ Slater-Koster 完整角因子表（含 d-d 交叉项）的
+     教材/文献（如 Papaconstantopoulos《Handbook of the Band Structure of
+     Elemental Solids》附录）。
+   拿到后即可完成该引擎并通过 1.805/1.969 eV 带隙验证。
