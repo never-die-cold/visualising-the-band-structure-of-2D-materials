@@ -128,11 +128,9 @@ def solve_dos(model: TightBindingModel, mesh: Tuple[int, int] = (48, 48),
 
     result = DOSResult(model_name=model.name, energies=energies, dos=dos,
                        sigma=sigma, mesh=mesh)
-    # 费米能级：每 k 点 n_sites 个态、每态 2 自旋 → 占据态数 = n_sites
-    n_occ_states = model.n_sites
+    # 费米能级：非自旋极化 → 占据带数 = 总带数的一半；
+    # 全局排序后占据/非占据的分界在总本征值数的一半处
     sorted_eig = np.sort(eig)
-    if len(sorted_eig) > 2 * n_occ_states:
-        result.efermi = float(sorted_eig[2 * n_occ_states - 1])
-    else:
-        result.efermi = float(sorted_eig.mean())
+    n_total = len(sorted_eig)
+    result.efermi = float(sorted_eig[n_total // 2 - 1])
     return result
