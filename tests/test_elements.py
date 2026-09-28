@@ -2,7 +2,7 @@
 
 import pytest
 
-from simulator.elements import (
+from vdw_studio.elements import (
     ELEMENTS,
     Element,
     covalent_radius,

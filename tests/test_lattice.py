@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from simulator.structure import Lattice
+from vdw_studio.structure import Lattice
 
 
 class TestConstructors:

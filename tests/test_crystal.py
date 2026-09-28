@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from simulator.structure import Atom, Crystal, Lattice
+from vdw_studio.structure import Atom, Crystal, Lattice
 
 
 def make_simple_cubic(a=2.0, n=1):
