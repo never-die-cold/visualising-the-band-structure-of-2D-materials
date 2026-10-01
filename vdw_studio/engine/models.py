@@ -170,6 +170,56 @@ class BuckledHoneycombModel(HoneycombModel):
         self.electric_field = electric_field
 
 
+class BilayerGrapheneModel(TightBindingModel):
+    """AB (Bernal) 堆叠双层石墨烯最小模型 + 垂直电场（McCann–Fal'ko）。
+
+    位点：上层 (A1, B1)、下层 (A2, B2)；层内最近邻 t（石墨烯 −2.7 eV），
+    层间二聚位耦合 B1–A2：γ₁ = 0.4 eV（文献标准值）。
+    垂直电场 U (eV, 层间势差)：上层在位 +U/2，下层 −U/2。
+
+    解析性质（本模型的精确结果，测试对账）：
+    - U=0：K 点能量 {0, 0, ±γ₁}——两条低能带在 K 点抛物线触碰（无隙）；
+    - U≠0：K 点能量 {±U/2, ±√(γ₁²+U²/4)}，带隙 = |U|
+      （最小模型线性开隙；含 γ₃/γ₄ 的完整参数化给出文献常用的
+       E_g = Uγ₁²/√(γ₁²+U²) 饱和形式——见 ROADMAP）；
+    - 色散：U=0 时低能带 ~ k²（抛物线，区别于单层的线性 Dirac 锥）。
+
+    参考：E. McCann, D. S. L. Abergel & V. I. Fal'ko,
+    Eur. Phys. J. Special Topics 148, 41 (2007) 及其中引文；
+    层间距 3.35 Å（石墨实验值）。
+    """
+
+    def __init__(self, a: float = 2.46, t: float = -2.7,
+                 gamma1: float = 0.4, interlayer: float = 3.35,
+                 electric_field: float = 0.0,
+                 vacuum: float = 15.0) -> None:
+        lattice = Lattice.hexagonal(a, vacuum=vacuum)
+        h = interlayer / 2
+        dz_frac = interlayer / vacuum
+        u = electric_field
+        # 层内三近邻（与单层相同的分数位移）
+        deltas = [(2 / 3, 1 / 3, 0.0), (-1 / 3, 1 / 3, 0.0),
+                  (-1 / 3, -2 / 3, 0.0)]
+        hs = []
+        # 层内: A1-B1 (位点 0-1), A2-B2 (位点 2-3)
+        for d in deltas:
+            hs.append(Hopping(0, 1, d, t))
+            hs.append(Hopping(2, 3, d, t))
+        # 层间: B1(1) - A2(2) 二聚位耦合 (z 分数位移不影响 k_z=0 相位)
+        hs.append(Hopping(1, 2, (0.0, 0.0, -dz_frac), gamma1))
+
+        # 在位: 上层 +U/2, 下层 -U/2
+        onsite = [u / 2, u / 2, -u / 2, -u / 2]
+        super().__init__(lattice, n_sites=4,
+                         site_symbols=["C", "C", "C", "C"],
+                         onsite=onsite, hoppings=hs,
+                         name="bilayer graphene (AB, McCann)")
+        self.a = a
+        self.t = t
+        self.gamma1 = gamma1
+        self.electric_field = electric_field
+
+
 # ----------------------------------------------------------------------
 # 黑磷烯
 # ----------------------------------------------------------------------

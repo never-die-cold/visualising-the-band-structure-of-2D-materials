@@ -22,6 +22,7 @@ from typing import Callable, Dict, List, Optional
 from ..analysis.properties import GapResult, analyze_gap
 from ..engine.kp_tmd import TMDKpModel, TMDKpParams, TMD_REFERENCE_MASSES
 from ..engine.models import (
+    BilayerGrapheneModel,
     BuckledHoneycombModel,
     HoneycombModel,
     PhosphoreneRudenko,
@@ -99,6 +100,20 @@ _register(MaterialPreset(
     "（K 点带隙 = |E·Δz|，可做电场调控演示）",
     source="a = 3.86 Å、翘曲 0.44 Å（标准 DFT 值）；t = −1.6 eV（文献常用）",
     tags=["电场调控", "拓扑", "自旋轨道"],
+))
+
+_register(MaterialPreset(
+    key="bilayer_graphene", name="双层石墨烯 (AB)", formula="C4",
+    category="蜂窝家族", engine="tb", structure_key="bilayer_graphene",
+    make_structure=build,
+    make_model=lambda electric_field=0.0: BilayerGrapheneModel(
+        electric_field=electric_field),
+    n_valence=2,
+    gap_ref=None, gap_note="零场：K 点抛物线触碰无隙；垂直电场线性开隙"
+    "（最小模型 E_g ≈ |U|；含 γ₃/γ₄ 的饱和形式见 ROADMAP）",
+    source="McCann–Fal'ko (2006/2007) 最小模型：γ₁ = 0.4 eV, t = −2.7 eV, "
+    "层间距 3.35 Å（实验）",
+    tags=["电场调控", "抛物线带", "双层"],
 ))
 
 _register(MaterialPreset(

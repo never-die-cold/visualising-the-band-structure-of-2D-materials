@@ -221,8 +221,10 @@ class MainWindow(QMainWindow):
         self._draw_structure()
         self._fill_tree()
         self.source_label.setText(self.preset.source)
-        self.field_spin.setVisible(self.preset.key == "silicene")
-        self.field_label.setVisible(self.preset.key == "silicene")
+        field_ok = self.preset.key in ("silicene", "bilayer_graphene")
+        self.field_spin.setVisible(field_ok)
+        self.field_label.setText("（仅硅烯/双层石墨烯等体系）")
+        self.field_label.setVisible(field_ok)
         is_tb = self.preset.engine == "tb"
         for w in (self.strain_x_spin, self.strain_y_spin,
                   self.strain_label):
@@ -232,7 +234,7 @@ class MainWindow(QMainWindow):
                  f"{self.structure.n_atoms} 原子/胞, 引擎 {self.preset.engine})")
 
     def _rebuild_model(self) -> None:
-        if self.preset.key == "silicene":
+        if self.preset.key in ("silicene", "bilayer_graphene"):
             self.model = self.preset.make_model(
                 electric_field=self.field_spin.value())
         else:

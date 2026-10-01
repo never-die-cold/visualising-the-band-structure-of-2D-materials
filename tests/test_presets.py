@@ -9,7 +9,8 @@ from vdw_studio.presets import PRESETS, get_preset, list_presets, run_preset
 class TestRegistry:
     def test_all_presets_present(self):
         assert set(list_presets()) == {
-            "graphene", "hbn", "silicene", "phosphorene",
+            "graphene", "hbn", "silicene", "bilayer_graphene",
+            "phosphorene",
             "mos2_kp", "mose2_kp", "ws2_kp", "wse2_kp", "mote2_kp", "wte2_kp",
             "mos2_sp3d5",
         }
@@ -32,7 +33,7 @@ class TestEndToEnd:
     # Hill 记法（字母序）：MoS2 天然有序，W 系材料为 S2W/Se2W/Te2W
     FORMULAS = {
         "graphene": "C2", "hbn": "BN", "silicene": "Si2",
-        "phosphorene": "P4", "mos2_kp": "MoS2", "mose2_kp": "MoSe2",
+        "bilayer_graphene": "C4", "phosphorene": "P4", "mos2_kp": "MoS2", "mose2_kp": "MoSe2",
         "ws2_kp": "S2W", "wse2_kp": "Se2W", "mote2_kp": "MoTe2",
         "wte2_kp": "Te2W", "mos2_sp3d5": "MoS2",
     }
@@ -51,7 +52,7 @@ class TestEndToEnd:
         if p.gap_ref is not None:
             assert r["gap_matches_ref"] is True, \
                 f"{key}: gap={gap.gap} vs ref {p.gap_ref}"
-        elif key in ("graphene", "silicene"):
+        elif key in ("graphene", "silicene", "bilayer_graphene"):
             assert gap.gap is None, f"{key} 应为零带隙"
 
 

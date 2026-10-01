@@ -74,6 +74,28 @@ def silicene(a: float = SILICENE_A, buckling: float = SILICENE_BUCKLING,
                       vacuum=vacuum)
 
 
+# AB 堆叠双层石墨烯：层间距 3.35 Å (石墨实验值)
+BILAYER_INTERLAYER = 3.35
+
+
+def bilayer_graphene(a: float = GRAPHENE_A,
+                     interlayer: float = BILAYER_INTERLAYER,
+                     vacuum: float = 15.0) -> Crystal:
+    """AB (Bernal) 堆叠双层石墨烯（4 原子/胞）。
+
+    上层 (A1, B1) 与下层 (A2, B2)；B1 位于 A2 正上方（二聚位），
+    层间距默认 3.35 Å（石墨实验值）。
+    """
+    lat = Lattice.hexagonal(a, vacuum=vacuum)
+    c = Crystal(lat)
+    h = interlayer / 2
+    c.add_atom("C", (0.0, 0.0, 0.5 + h / vacuum), label="A1")
+    c.add_atom("C", (2 / 3, 1 / 3, 0.5 + h / vacuum), label="B1")
+    c.add_atom("C", (0.0, 0.0, 0.5 - h / vacuum), label="A2")
+    c.add_atom("C", (2 / 3, 1 / 3, 0.5 - h / vacuum), label="B2")
+    return c
+
+
 # ----------------------------------------------------------------------
 # 过渡金属硫族化合物 (1H 相, P-6m2)
 # ----------------------------------------------------------------------
@@ -164,6 +186,7 @@ BUILDERS = {
     "graphene": graphene,
     "hbn": hbn,
     "silicene": silicene,
+    "bilayer_graphene": bilayer_graphene,
     "phosphorene": phosphorene,
     **{k: (lambda n=k: tmd(n)) for k in TMD_STRUCTURAL_PARAMS},
 }

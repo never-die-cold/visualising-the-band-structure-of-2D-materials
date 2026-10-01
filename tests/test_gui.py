@@ -71,6 +71,17 @@ class TestMainWindow:
         assert win.result_item.childCount() >= 2
         win.close()
 
+    def test_bilayer_field_opens_gap(self, app):
+        """双层石墨烯预设：GUI 电场输入线性开隙（最小模型 E_g ≈ |U|）。"""
+        win = MainWindow()
+        win.set_material("bilayer_graphene")
+        assert win.structure.formula_str == "C4"
+        win.field_spin.setValue(0.5)
+        win._rebuild_model()
+        e = win.model.energies_at((1 / 3, 1 / 3))
+        assert (e[2] - e[1]) == pytest.approx(0.5, abs=1e-8)
+        win.close()
+
     def test_strain_changes_model(self, app):
         """GUI 应变输入 → 模型晶格实际缩放（仅 TB 引擎生效）。"""
         win = MainWindow()
