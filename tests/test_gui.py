@@ -71,6 +71,27 @@ class TestMainWindow:
         assert win.result_item.childCount() >= 2
         win.close()
 
+    def test_strain_changes_model(self, app):
+        """GUI 应变输入 → 模型晶格实际缩放（仅 TB 引擎生效）。"""
+        win = MainWindow()
+        win.set_material("graphene")
+        win.strain_x_spin.setValue(2.0)
+        win.strain_y_spin.setValue(2.0)
+        win._rebuild_model()
+        assert win.model.lattice.parameters()[0] == pytest.approx(2.46 * 1.02)
+        # hopping 已按 t∝d⁻² 重整
+        assert win.model.hoppings[0].t == pytest.approx(-2.7 * 1.02 ** -2)
+        # k·p 引擎不受应变输入影响
+        win.set_material("mos2_kp")
+        win.strain_x_spin.setValue(5.0)
+        win.strain_y_spin.setValue(5.0)
+        win._rebuild_model()
+        gaps = [win.model.spin_block_energies((0, 0), +1, s)[1]
+                - win.model.spin_block_energies((0, 0), +1, s)[0]
+                for s in (+1, -1)]
+        assert min(gaps) == pytest.approx(1.67, abs=1e-6)
+        win.close()
+
     def test_worker_thread_mode(self, app):
         """线程模式：run() 在子线程完成计算并填充结果盒（轮询模式）。"""
         win = MainWindow()

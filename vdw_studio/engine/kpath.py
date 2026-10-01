@@ -38,12 +38,20 @@ DEFAULT_PATHS: Dict[str, List[str]] = {
 DISPLAY_SYMBOLS = {"G": "Γ", "M": "M", "K": "K", "X": "X", "Y": "Y", "S": "S"}
 
 
-def lattice_type(lattice: Lattice) -> str:
-    """按面内对称性判定格子类型（hexagonal / square / rectangular）。"""
+def lattice_type(lattice: Lattice, tol_rel: float = 1e-4,
+                 tol_deg: float = 1e-3) -> str:
+    """按面内对称性判定格子类型（hexagonal / square / rectangular）。
+
+    参数:
+        tol_rel: 晶格长度相对容差（|a−b|/a）。
+        tol_deg: 角度容差 (°)。
+    """
     a, b, _, _, _, gamma = lattice.parameters()
-    if abs(a - b) < 1e-4 and abs(abs(gamma) - 120.0) < 1e-3:
+    if (abs(a - b) <= tol_rel * a
+            and abs(abs(gamma) - 120.0) <= tol_deg):
         return "hexagonal"
-    if abs(a - b) < 1e-4 and abs(gamma - 90.0) < 1e-3:
+    if (abs(a - b) <= tol_rel * a
+            and abs(gamma - 90.0) <= tol_deg):
         return "square"
     return "rectangular"
 
@@ -69,8 +77,12 @@ class KPath:
     @classmethod
     def for_lattice(cls, lattice: Lattice,
                     path: Optional[List[str]] = None) -> "KPath":
-        """按晶格类型自动选择高对称点集与默认路径。"""
-        ltype = lattice_type(lattice)
+        """按晶格类型自动选择高对称点集与默认路径。
+
+        路径选择的对称性判定使用放宽容差（长度 6%、角度 3°），
+        使轻微应变的六方格子仍按 Γ-M-K-Γ 处理（文献惯例）。
+        """
+        ltype = lattice_type(lattice, tol_rel=0.06, tol_deg=3.0)
         pts = HIGH_SYMMETRY_POINTS[ltype]
         path = list(path) if path is not None else list(DEFAULT_PATHS[ltype])
         for name in path:

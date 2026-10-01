@@ -128,6 +128,20 @@ class MainWindow(QMainWindow):
         self.field_label.setStyleSheet("color: #888;")
         form.addRow("", self.field_label)
 
+        self.strain_x_spin = QDoubleSpinBox()
+        self.strain_x_spin.setRange(-10.0, 10.0)
+        self.strain_x_spin.setSingleStep(0.5)
+        self.strain_x_spin.setDecimals(1)
+        form.addRow("应变 εx (%)", self.strain_x_spin)
+        self.strain_y_spin = QDoubleSpinBox()
+        self.strain_y_spin.setRange(-10.0, 10.0)
+        self.strain_y_spin.setSingleStep(0.5)
+        self.strain_y_spin.setDecimals(1)
+        form.addRow("应变 εy (%)", self.strain_y_spin)
+        self.strain_label = QLabel("（仅紧束缚引擎；键长标度律 t∝d⁻ⁿ）")
+        self.strain_label.setStyleSheet("color: #888;")
+        form.addRow("", self.strain_label)
+
         self.run_button = QPushButton("▶ 运行仿真")
         self.run_button.setStyleSheet(
             "QPushButton{background:#1f4e79;color:white;padding:6px;"
@@ -209,6 +223,10 @@ class MainWindow(QMainWindow):
         self.source_label.setText(self.preset.source)
         self.field_spin.setVisible(self.preset.key == "silicene")
         self.field_label.setVisible(self.preset.key == "silicene")
+        is_tb = self.preset.engine == "tb"
+        for w in (self.strain_x_spin, self.strain_y_spin,
+                  self.strain_label):
+            w.setEnabled(is_tb)
         self.log(f"已加载材料: {self.preset.name} "
                  f"({self.structure.formula_str}, "
                  f"{self.structure.n_atoms} 原子/胞, 引擎 {self.preset.engine})")
@@ -219,6 +237,13 @@ class MainWindow(QMainWindow):
                 electric_field=self.field_spin.value())
         else:
             self.model = self.preset.make_model()
+        # 应变工程（仅位点型紧束缚引擎；k·p/sp3d5 参数无应变依赖）
+        if self.preset.engine == "tb":
+            from ..engine.strain import apply_strain
+            self.model = apply_strain(
+                self.model,
+                ex=self.strain_x_spin.value() / 100.0,
+                ey=self.strain_y_spin.value() / 100.0)
 
     # ------------------------------------------------------------------
     # 结构视图与工程树
