@@ -2,49 +2,50 @@
 
 物理模型：
 - 电子–空穴相互作用取二维屏蔽库仑势（Rytova–Keldysh），
-  实空间形式（本文约定，见下方极限自检）::
+  实空间形式::
 
       V(r) = −(e²/4πε₀ε_env) · (π/2) · [H₀(r/r₀) − Y₀(r/r₀)] / r₀
 
   其中 H₀ 为 Struve 函数、Y₀ 为第二类 Bessel 函数，
   r₀ 为二维极化长度（材料+介电环境相关），ε_env 为环境介电常数。
   极限自检：r₀→0（ρ = r/r₀ → ∞）时 H₀−Y₀ ~ 2/(πρ)，
-  V → −e²/(4πε₀ε_env·r)——严格回到三维库仑形式 ✓。
+  V → −e²/(4πε₀ε_env·r)——严格回到库仑形式 ✓（tests 对账）。
 
 - 相对坐标径向方程（m=0, 1s/2s/… 通道）::
 
-      [−(ħ²/2μ)(ψ'' + ψ'/r) + V(r)ψ] = Eψ
+      [−(ħ²/2μ)(1/r)(d/dr)(r d/dr) + V(r)] u = E u
 
-  通过 ψ = χ/√r 变换化为带 1/(4r²) 势的常微分方程（数值上
-  等价且保证厄米性），三对角有限差分本征值求解。
+- **数值方法：Fourier–Bessel 基组（径向 DVR）+ 广义本征值**。
+  展开 u(r) = Σ cₙ J₀(kₙr)，kₙ = j₀,ₙ/R（j₀,ₙ 为 J₀ 的第 n 个零点，
+  满足 u(R)=0 边界）。基函数以 ``r dr`` 为度量正交：
+  Nₙ = ∫J₀² r dr = (R²/2)J₁(j₀,ₙ)²；
+  动能矩阵 (ħ²kₙ²/2μ)·Nₙ δₙₘ（严格对角）；
+  势能矩阵 Vₙₘ = ∫ J₀(kₙr)·V(r)·J₀(kₘr)·r dr（梯形求积，
+  积分核 r·V(r) 在 r→0 处有限——库仑: → −e²/4πε₀ε_env；
+  Keldysh: → 0——完全规避 1/r 奇异性）。
+  求解广义本征值问题 Hc = E·Nc（scipy generalized eigh）。
 
-- **验证锚点（解析精确）**：库仑极限下 2D 氢原子谱
-  E_n = −4Ry*/(2n+1)²（n = 0,1,…），Ry* = (μ/m₀)·13.6058 eV/ε_env²；
-  数值解应重现 E₀ = −4Ry*（1s）与 E₁ = −4Ry*/9（2s）。
+  ⚠ 实现注记：动能矩阵必须含 Nₙ 权重（广义度量），且基组内
+  不得混入其它约定（如 1/√N 归一化或列/行向量转置）——
+  这些约定混用曾导致"各向异性/不收敛"的假象（见 git 历史）。
 
 材料参数说明（防幻觉）：r₀ 与 μ 因材料和介电环境而异；
 本模块将其作为**用户参数**，材料默认值待文献标定后加入预设库
 （见 docs/REFERENCES.md 待办：Cudazzo et al. PRB 84, 085406 (2011)）。
-
-⚠️ **已知问题（WIP，勿用于定量结论）**：守恒型有限差分格式对 2D
-库仑势的 1/r 奇异性收敛不足——库仑极限下基态收敛到 ≈ −8.2 eV
-（精确值 −4Ry* = −13.6 eV @ μ=0.25），网格加倍仅缓慢改善。
-2D 氢原子精确谱验证**未通过**。后续计划：r < a* 区域用解析
-基函数或对数/非均匀网格处理奇异性。已验证可用的部分：
-keldysh_potential() 的库仑极限（r₀→0）与势函数本身。
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
+import scipy.linalg
 from scipy import special
 
 # e²/(4πε₀) = 14.3996 eV·Å（库仑常数）
 COULOMB_CONST = 14.3996
-# ħ²/(2m₀) = 0.2380 eV·Å²·? — 即 ħ²/(2m₀) = 3.80998 eV·Å²（用于 μ 标度）
+# ħ²/(2m₀) = 3.809982 eV·Å²（用于 μ 标度）
 HBAR2_OVER_2M0 = 3.809982
 # Rydberg（m₀, ε=1）: 13.6057 eV
 RY = 13.6057
@@ -70,6 +71,23 @@ def coulomb_potential(r, eps_env: float = 1.0) -> np.ndarray:
     return -COULOMB_CONST / (eps_env * np.asarray(r, dtype=float))
 
 
+def _r_times_potential(r: np.ndarray, r0: Optional[float],
+                       eps_env: float) -> np.ndarray:
+    """积分核 w(r) = r·V(r)：r→0 极限解析处理（避免 0·∞）。
+
+    - 纯库仑：r·V → −e²/(4πε₀ε_env)（有限常数）；
+    - Keldysh：ρ(H₀−Y₀) → 0，故 r·V → 0。
+    """
+    w = np.empty_like(r)
+    if r0 is None:
+        w[1:] = coulomb_potential(r[1:], eps_env) * r[1:]
+        w[0] = -COULOMB_CONST / eps_env
+    else:
+        w[0] = 0.0
+        w[1:] = keldysh_potential(r[1:], r0, eps_env) * r[1:]
+    return w
+
+
 @dataclass
 class ExcitonResult:
     """激子能级求解结果。"""
@@ -79,6 +97,8 @@ class ExcitonResult:
     r0: Optional[float]       # 极化长度 (None = 纯库仑)
     eps_env: float
     mu_over_m0: float         # 约化质量 (m₀ 单位)
+    r_max: float = 0.0        # 径向盒子尺寸 (Å)
+    n_basis: int = 0          # Bessel 基函数数目
 
     def rydberg(self) -> float:
         """有效 Rydberg Ry* = (μ/m₀)·13.6057/ε² (eV)。"""
@@ -89,28 +109,25 @@ def solve_exciton(mu_over_m0: float = 0.25,
                   eps_env: float = 1.0,
                   r0: Optional[float] = None,
                   n_levels: int = 4,
-                  n_grid: int = 4000,
+                  n_basis: int = 250,
+                  n_quad: int = 6000,
                   r_max: Optional[float] = None) -> ExcitonResult:
-    """求解 2D 激子径向方程（m=0 通道，s 态序列）。
-
-    数值格式：径向拉普拉斯 (1/r)(d/dr)(r du/dr) 的守恒型离散
-    （保证对称性），广义本征值问题 ``S u = E·M u``（M = diag(r)）。
+    """求解 2D 激子径向方程（m=0 通道，s 态序列；Fourier–Bessel DVR）。
 
     参数:
         mu_over_m0: 电子–空穴约化质量 (m₀ 单位)。
         eps_env: 环境介电常数。
         r0: Keldysh 极化长度 (Å)；None = 纯库仑势（2D 氢原子极限）。
         n_levels: 返回的低能级数。
-        n_grid: 径向网格点数。
-        r_max: 网格外半径 (Å)；默认按有效玻尔半径自适应
+        n_basis: Bessel 基函数数目（越大越精确，收敛 ~ O(N⁻²)）。
+        n_quad: 势能积分的求积点数。
+        r_max: 径向盒子半径 (Å)；默认按有效玻尔半径自适应
                （库仑: a* = ε·(m₀/μ)·0.529 Å，取 40a*；
-                Keldysh: 取 40·r₀ 与 200 Å 的较大者）。
+                Keldysh: 取 40·r₀ 与 30a* 的较大者）。
 
     返回:
         :class:`ExcitonResult`（能量升序，负值为束缚态）。
     """
-    import scipy.linalg
-
     if mu_over_m0 <= 0 or eps_env <= 0:
         raise ValueError("μ 与 ε_env 必须为正")
     hbar2_over_2mu = HBAR2_OVER_2M0 / mu_over_m0   # ħ²/(2μ) eV·Å²
@@ -122,34 +139,27 @@ def solve_exciton(mu_over_m0: float = 0.25,
         else:
             r_max = max(40 * r0, 30 * a_bohr, 30.0)
 
-    # 半开网格 r_i = i·dr (i = 1..N), 边界 u(0)=0, u(r_max⁺)=0
-    dr = r_max / (n_grid + 1)
-    r = np.arange(1, n_grid + 1) * dr
-    r_half_p = r + dr / 2     # r_{i+1/2}
-    r_half_m = r - dr / 2     # r_{i-1/2}
+    # Fourier–Bessel 基组: u(r) = Σ cₙ J₀(kₙr), kₙ = j₀,ₙ/R
+    zeros = special.jn_zeros(0, n_basis)
+    kn = zeros / r_max
+    norms = 0.5 * r_max ** 2 * special.j1(zeros) ** 2   # ∫J₀² r dr
+    T = np.diag(hbar2_over_2mu * kn ** 2 * norms)       # 动能 (含 Nₙ 权重!)
 
-    # 势
-    if r0 is None:
-        V = coulomb_potential(r, eps_env)
-    else:
-        if r0 <= 0:
-            raise ValueError("r0 必须为正")
-        V = keldysh_potential(r, r0, eps_env)
+    # 势能矩阵 (梯形求积; 核 r·V(r) 在 r=0 有限)
+    r = np.linspace(0.0, r_max, n_quad)
+    dr = r[1] - r[0]
+    w = _r_times_potential(r, r0, eps_env)              # r·V(r)
+    qw = np.full(n_quad, dr)
+    qw[0] *= 0.5
+    qw[-1] *= 0.5
+    J = special.j0(np.outer(kn, r))                     # (N, n_quad)
+    V = ((J * w) * qw) @ J.T
 
-    # 守恒型离散: −ħ²/2μ·(1/r_i)·[r₊(u_{i+1}−u_i) − r₋(u_i−u_{i−1})]/dr²
-    # 两边乘 r_i dr² 得对称矩阵 S (广义本征问题 S u = E·M u, M = diag(r))
-    # 守恒型离散: −ħ²/2μ·(1/r_i)·[r₊(u_{i+1}−u_i) − r₋(u_i−u_{i−1})]/dr²
-    # 两边乘 r_i dr²: 对角 = ħ²/2μ(r₊+r₋)/dr² + V·r_i (r_i 已与 1/r_i 相消);
-    # 非对角 = −ħ²/2μ·r_{i±1/2}/dr² (N−1 个耦合)
-    tpp = hbar2_over_2mu * r_half_p[: n_grid - 1] / dr ** 2   # N−1 个耦合
-    diag_kin = hbar2_over_2mu * (r_half_p + r_half_m) / dr ** 2  # N 个
-    S = np.diag(diag_kin + V * r)
-    S += np.diag(-tpp, 1)
-    S += np.diag(-tpp, -1)
-    M = np.diag(r)
-
-    eig = scipy.linalg.eigh(S, M, eigvals_only=True)
+    # 广义本征值问题 H c = E·N c (度量 = diag(Nₙ))
+    H = T + V
+    eig = scipy.linalg.eigh(H, np.diag(norms), eigvals_only=True)
     bound = eig[eig < 0][:n_levels]
     return ExcitonResult(energies=bound, binding_1s=float(-bound[0]),
                          r0=r0, eps_env=eps_env,
-                         mu_over_m0=mu_over_m0)
+                         mu_over_m0=mu_over_m0,
+                         r_max=float(r_max), n_basis=int(n_basis))
