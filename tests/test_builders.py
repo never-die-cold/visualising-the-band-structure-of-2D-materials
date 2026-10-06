@@ -20,6 +20,7 @@ from vdw_studio.structure.builders import (
     phosphorene,
     silicene,
     tmd,
+    tmd_bilayer,
     TMD_STRUCTURAL_PARAMS,
 )
 
@@ -150,3 +151,46 @@ class TestRegistry:
         assert build("mos2").formula_str == "MoS2"
         with pytest.raises(ValueError):
             build("unknown")
+
+
+class TestTmdBilayer:
+    """2H 相双层 TMD 构建器（AB' 堆叠）。"""
+
+    def test_formula_and_count(self):
+        c = tmd_bilayer("MoS2")
+        assert c.formula_str == "Mo2S4"
+        assert c.n_atoms == 6
+
+    def test_intra_layer_bonds(self):
+        """层内三棱柱配位：每个 Mo 6 配位, 键长与单层一致。"""
+        c = tmd_bilayer("MoS2")
+        bond = np.sqrt(3.1604 ** 2 / 3 + (3.170 / 2) ** 2)
+        for center in (0, 3):   # 两个 Mo
+            nbs = [n for n in c.neighbors(c.frac_coords[center], 2.8)
+                   if n.distance > 1e-6]
+            assert len(nbs) == 6
+            assert nbs[0].distance == pytest.approx(bond, rel=1e-6)
+
+    def test_interlayer_distances(self):
+        """跨层：S–S 最近 ≈ 3.49 Å (vdW 接触), Mo–Mo 垂直分量 = 6.15 Å。"""
+        c = tmd_bilayer("MoS2")
+        ss = []
+        for i in (1, 2):
+            for j in (4, 5):
+                df = c.frac_coords[j] - c.frac_coords[i]
+                for nx in (-1, 0, 1):
+                    for ny in (-1, 0, 1):
+                        d = np.linalg.norm(
+                            (df + np.array([nx, ny, 0])) @ c.lattice.matrix)
+                        if 1.0 < d < 5.0:
+                            ss.append(d)
+        assert min(ss) == pytest.approx(3.494, abs=0.01)
+        vac = 15.0
+        dz = abs(c.frac_coords[3][2] - c.frac_coords[0][2]) * vac
+        assert dz == pytest.approx(6.15, abs=1e-9)
+
+    def test_registry_has_2h(self):
+        from vdw_studio.structure.builders import BUILDERS
+        assert "MoS2_2h" in BUILDERS
+        c = BUILDERS["MoS2_2h"]()
+        assert c.formula_str == "Mo2S4"

@@ -140,6 +140,45 @@ def tmd(name: str = "MoS2", a: Optional[float] = None,
     return c
 
 
+# 2H 相双层 TMD：层间距 (Mo–Mo 跨层) 取 2H-MoS₂ 体相 c/2 = 6.15 Å
+TMD_BILAYER_INTERLAYER = 6.15
+
+
+def tmd_bilayer(name: str = "MoS2", a: Optional[float] = None,
+                dxx: Optional[float] = None,
+                interlayer: float = TMD_BILAYER_INTERLAYER,
+                vacuum: float = 15.0) -> Crystal:
+    """2H 相双层 TMD（AB' 堆叠，6 原子/胞，P6₃/mmc 局域结构）。
+
+    两个 1H 单层沿 c 方向堆叠，第二层相对第一层旋转 180°
+    （金属位 (1/3,2/3) ↔ (2/3,1/3) 交换——2H 堆叠的特征），
+    Mo–Mo 跨层距离默认取 2H-MoS₂ 体相 c/2 = 6.15 Å。
+
+    验证锚点：层内 Mo–S 键长与单层一致；跨层最近邻为 S–S
+    （≈3.5 Å vdW 接触），Mo–Mo 跨层 = interlayer。
+    """
+    key = name.replace("₂", "2").strip()
+    if key not in TMD_STRUCTURAL_PARAMS:
+        raise ValueError(f"未知 TMD 材料 {name!r}，可选: {list(TMD_STRUCTURAL_PARAMS)}")
+    p_ = TMD_STRUCTURAL_PARAMS[key]
+    a_ = p_["a"] if a is None else a
+    dxx_ = p_["dxx"] if dxx is None else dxx
+    lat = Lattice.hexagonal(a_, vacuum=vacuum)
+    c = Crystal(lat)
+    half = dxx_ / 2
+    z1, z2 = 0.5 - interlayer / 2 / vacuum, 0.5 + interlayer / 2 / vacuum
+    # 层 1 = 单层平移 (1/3,2/3)：Mo(1/3,2/3)，三棱柱 S_up 在 (2/3,1/3)、
+    # S_dn 在 (0,0)（与单层 Mo(0,0)/S_up(1/3,2/3)/S_dn(2/3,1/3) 同构）
+    c.add_atom(p_["metal"], (1 / 3, 2 / 3, z1))
+    c.add_atom(p_["chalcogen"], (2 / 3, 1 / 3, z1 + half / vacuum))
+    c.add_atom(p_["chalcogen"], (0.0, 0.0, z1 - half / vacuum))
+    # 层 2 = 层 1 旋转 180°（金属位 (1/3,2/3) ↔ (2/3,1/3) 交换）
+    c.add_atom(p_["metal"], (2 / 3, 1 / 3, z2))
+    c.add_atom(p_["chalcogen"], (1 / 3, 2 / 3, z2 + half / vacuum))
+    c.add_atom(p_["chalcogen"], (1 / 3, 2 / 3, z2 - half / vacuum))
+    return c
+
+
 # ----------------------------------------------------------------------
 # 黑磷烯 (monolayer black phosphorus)
 # ----------------------------------------------------------------------
@@ -189,6 +228,7 @@ BUILDERS = {
     "bilayer_graphene": bilayer_graphene,
     "phosphorene": phosphorene,
     **{k: (lambda n=k: tmd(n)) for k in TMD_STRUCTURAL_PARAMS},
+    **{k + "_2h": (lambda n=k: tmd_bilayer(n)) for k in TMD_STRUCTURAL_PARAMS},
 }
 
 
