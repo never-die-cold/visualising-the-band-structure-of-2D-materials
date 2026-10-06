@@ -9,6 +9,12 @@ from .properties import (
 )
 from .berry import DichroismResult, berry_curvature, optical_circular_dichroism, valley_chern
 from .exciton import ExcitonResult, coulomb_potential, keldysh_potential, solve_exciton
+from .orbital_moment import (
+    ValleyZeemanResult,
+    orbital_moment,
+    orbital_moment_map,
+    valley_zeeman_splitting,
+)
 
 __all__ = [
     "GapResult", "analyze_gap", "effective_mass",
@@ -16,4 +22,6 @@ __all__ = [
     "berry_curvature", "valley_chern",
     "optical_circular_dichroism", "DichroismResult",
     "solve_exciton", "keldysh_potential", "coulomb_potential", "ExcitonResult",
+    "orbital_moment", "orbital_moment_map",
+    "valley_zeeman_splitting", "ValleyZeemanResult",
 ]
