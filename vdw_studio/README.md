@@ -17,6 +17,10 @@ vdW Studio 内置材料结构库与多种仿真引擎，不依赖外部第一性
 |------|------|
 | ![磷烯BZ](../docs/images/phosphorene_bz.png) | ![磷烯DOS](../docs/images/phosphorene_dos.png) |
 
+| 转角双层石墨烯 moiré 平带（魔角 1.05°） |
+|------|
+| ![moire](../docs/images/moire_bands.png) |
+
 ---
 
 ## 功能特性
@@ -38,15 +42,21 @@ vdW Studio 内置材料结构库与多种仿真引擎，不依赖外部第一性
 - **图形界面** — 工程树 + 多标签结果页（结构/能带/DOS/布里渊区）+ 参数面板 +
   后台计算线程
 - **命令行** — 批量仿真与结构导出
-- **应变工程** — 双轴/单轴应变（键长标度律重整 hopping），
-  石墨烯 v_F(ε) = v_F(0)/(1+ε) 与解析式精确一致，界面/CLI 可调
 - **谷物理** — Berry 曲率热图、谷半 Chern 数、圆偏振选择定则
   （K/−K 强度比 >10⁴，时间反演精确验证）
+- **谷磁矩与谷 Zeeman** — 轨道磁矩通式（RMP 2010 波包表述）+
+  带边 μ*_B = (m₀/m*)·μ_B + 谷劈裂 ΔE = −2m·μ_B·B，
+  三路独立实现对账（RMP 原式有限差分 / 速度矩阵元 / 两带解析）
 - **2D 激子求解器** — Rytova–Keldysh 屏蔽势 + Fourier–Bessel DVR，
-  库仑极限与 2D 氢原子精确谱对账（<2%），介电工程调谐束缚能
+  库仑极限与 2D 氢原子精确谱对账（<2%）；四种 TMD 的 μ/r₀ 默认值
+  按 Berkelbach 2013 Table 文献标定，精确解与文献变分束缚能对账
+  （偏差 2–5%），`solve_preset_exciton()` 一键介电工程调谐
+- **转角 moiré 引擎** — Bistritzer–MacDonald 连续模型（任意转角
+  平面波展开）：**魔角 θ=1.05° 数值复现**、第一壳层解析速度
+  v*/v=(1−3α²)/(1+6α²)、k=0 双零模、魔角平带 ~8 meV
 - **结果数据库** — SQLite 记录每次仿真（材料/参数/结果 JSON），
   高通量批量筛选与历史查询（CLI `history`）
-- **物理自检** — 267 项单元测试全部通过；每个模型的带隙/有效质量/劈裂
+- **物理自检** — 298 项单元测试全部通过；每个模型的带隙/有效质量/劈裂
   与文献数值自动对账，每个参数标注文献出处（防幻觉机制）
 
 ---
@@ -78,6 +88,8 @@ python -m pytest tests/
 ```bash
 python examples/run_mos2_kp.py        # MoS₂ k·p 谷物理
 python examples/run_phosphorene.py    # 黑磷烯各向异性
+python examples/run_moire.py          # 转角双层石墨烯 moiré 平带（魔角 1.05°）
+python examples/run_exciton.py        # 2D 激子束缚能（Keldysh 势）
 python examples/export_all_structures.py  # 全部材料结构导出
 ```
 
@@ -99,6 +111,7 @@ python examples/export_all_structures.py  # 全部材料结构导出
 | MoTe₂ | k·p | 0.997 eV (K) | 0.997 eV | |
 | WTe₂ | k·p | 0.792 eV (K) | 0.792 eV | |
 | MoS₂ (sp³d⁵) | SK 非正交 | 待验证 | 1.805 eV | 框架就绪，待 Nanoskif 相位约定（见 ROADMAP） |
+| 转角双层石墨烯 | BM 连续模型 | 0（魔角平带） | — | 魔角 1.05° 复现（BM Fig. 3）；v*/v=(1−3α²)/(1+6α²) 精确；平带 ~8 meV |
 
 ---
 
@@ -113,12 +126,13 @@ vdw_studio/
 │   └── builders.py   #   10 种二维材料构建器
 ├── engine/
 │   ├── kpath.py      #   高对称点与 k 路径（Γ-M-K-Γ 等）
-│   ├── models.py     #   位点紧束缚模型（石墨烯/hBN/硅烯/磷烯）
+│   ├── models.py     #   位点紧束缚模型（石墨烯/hBN/硅烯/磷烯/双层）
 │   ├── kp_tmd.py     #   TMD k·p 引擎（谷+自旋，6 材料参数库）
 │   ├── slater_koster.py  # SK 角因子（张量旋转严格构造）
 │   ├── zahid_mos2.py #   MoS₂ sp³d⁵ 非正交 TB（96 参数）
+│   ├── moire.py      #   转角双层石墨烯 BM 连续模型（moiré 平带）
 │   └── solver.py     #   能带/DOS 求解器
-├── analysis/         # 带隙/有效质量/Berry曲率/谷物理/激子求解器
+├── analysis/         # 带隙/有效质量/Berry曲率/谷磁矩/谷物理/激子求解器
 ├── presets/          # 材料预设库（一键端到端 + 文献参考对账）
 ├── visualization/    # 结构/能带/DOS/布里渊区绘图
 ├── gui/              # PyQt5 图形界面
@@ -138,6 +152,10 @@ vdw_studio/
 - F. Zahid *et al.*, **Phys. Rev. B 87**, 125302 (2013)（MoS₂ sp³d⁵ TB）
 - A. N. Rudenko & M. I. Katsnelson, **Phys. Rev. B 89**, 201408(R) (2014)（黑磷烯）
 - S. Reich *et al.*, **Phys. Rev. B 66**, 035412 (2002)（石墨烯 TB）
+- D. Xiao, M.-C. Chang, Q. Niu, **Rev. Mod. Phys. 82**, 1959 (2010)（Berry 相位/轨道磁矩）
+- D. Xiao *et al.*, **Phys. Rev. Lett. 108**, 196802 (2012)（TMD 谷物理）
+- T. C. Berkelbach *et al.*, **Phys. Rev. B 88**, 045318 (2013)（TMD 激子参数）
+- R. Bistritzer & A. H. MacDonald, **Phys. Rev. B 84**, 035440 (2011)（转角石墨烯 moiré）
 
 ---
 

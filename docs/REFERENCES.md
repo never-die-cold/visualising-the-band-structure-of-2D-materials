@@ -60,43 +60,90 @@
    *Phys. Rev. B* **66**, 035412 (2002).
    - 用途：石墨烯/hBN 二带模型 hopping t = −2.7 eV 量级、
      hBN 子格势差。验证目标：石墨烯 K 点 Dirac 锥、
-     费米速度 v_F = (√3/2)·a·|t|/ħ ≈ 0.85×10⁶ m/s（t=−2.7 eV, a=2.46 Å）。
+     费米速度 v_F = (√3/2)·a·|t|/ħ ≈ 0.85×10⁶ m/s（t=−2.7 eV, a=2.46 Å）；
+     BM moiré 模型的 ħv = (√3/2)|t|a₀ = 5.755 eV·Å 同源。
 
-## 规划采用（待引入）
+6. **Xiao, Chang & Niu 2010（Berry 相位波包理论总纲，轨道磁矩）**
+   D. Xiao, M.-C. Chang, Q. Niu,
+   "Theory of Berry phase effects in materials",
+   *Rev. Mod. Phys.* **82**, 1959 (2010).
+   arXiv: [0907.2021](https://arxiv.org/abs/0907.2021)（源码：`papers/arxiv/xiao_rmp2010/`）
+   - 用途：Berry 曲率（速度算符表述，`analysis/berry.py`）与
+     **轨道磁矩**（波包自旋转 Eq. (wave:m)，`analysis/orbital_moment.py`，
+     Phase 4.2 谷磁矩/谷 Zeeman）；
+   - 关键结果：带边磁矩 m(τ_z) = τ_z·μ*_B，μ*_B = eħ/2m*；
+     Zeeman 耦合 ε_M(k) = ε(k) − m(k)·B → 谷劈裂 ΔE = −2m·B。
 
-6. **Xiao et al. 2012（谷物理/大质量 Dirac 模型原始文献）**
-   D. Xiao, G.-B. Liu, W. Feng, X. Xu, W. Yao,
-   "Coupled Spin and Valley Physics in Monolayers of MoS₂ and Other Group-VI Dichalcogenides",
-   *Phys. Rev. Lett.* **108**, 196802 (2012).
-   - 用途：谷选择光学定则、Berry 曲率（ROADMAP：谷物理模块）。
+7. **Berkelbach, Hybertsen & Reichman 2013（TMD 激子参数标定）**
+   T. C. Berkelbach, M. S. Hybertsen, D. R. Reichman,
+   "Theory of neutral and charged excitons in monolayer transition metal dichalcogenides",
+   *Phys. Rev. B* **88**, 045318 (2013).
+   arXiv: [1305.4972](https://arxiv.org/abs/1305.4972)（源码：`papers/arxiv/berkelbach2013/`）
+   - 用途：MoS₂/MoSe₂/WS₂/WSe₂ 激子默认参数（Table：μ = 0.25/0.27/0.16/0.17 m₀，
+     χ₂D = 6.60/8.23/6.03/7.18 Å，变分束缚能 0.54/0.47/0.50/0.45 eV）；
+     Keldysh 势形式 V = πe²/((ε₁+ε₂)ρ₀)[H₀−Y₀] 与本模块逐项一致。
+   - 验证：精确 DVR 解 ≥ 变分下界且偏差 ≤10%（`tests/test_exciton.py`）。
 
-7. **Cudazzo, Tokatly, Rubio 2011 / Keldysh 介电模型（二维屏蔽势）**
-   P. Cudazzo, I. V. Tokatly, A. Rubio,
-   "Dielectric screening in two-dimensional insulators: Implications for excitonic and
-   impurity states in graphane and hexagonal boron nitride",
-   *Phys. Rev. B* **84**, 085406 (2011).
-   - 用途：ROADMAP 中"介电环境/激子物理"模块的 Rytova-Keldysh 势 V(r)。
-
-8. **Trambly de Laissardière et al. 2010 / Bistritzer-MacDonald 2011（转角石墨烯）**
-   G. Trambly de Laissardière, D. Mayou, L. Magaud,
-   "Localization of Dirac electrons in rotated graphene bilayers",
-   *Nano Lett.* **10**, 804 (2010);
+8. **Bistritzer & MacDonald 2011（转角双层石墨烯连续模型）**
    R. Bistritzer, A. H. MacDonald,
    "Moiré bands and twisted Wannier states",
    *Phys. Rev. B* **84**, 035440 (2011).
-   - 用途：ROADMAP 中莫尔超晶格/转角双层引擎（层间 hopping 插值函数）。
+   arXiv: [1009.4203](https://arxiv.org/abs/1009.4203)（源码：`papers/arxiv/bistritzer2011/`）
+   - 用途：`engine/moire.py` 全部模型要素：单层 Dirac 块 h_k(θ)（Eq. 1）、
+     层间隧穿 T(r) = wΣe^{−iq_j·r}T_j 与 T₁/T₂/T₃ 矩阵（Eq. 2–5，w=110 meV）、
+     q_j 方向 (0,−1)/(√3/2,1/2)/(−√3/2,1/2)、moiré 周期 L_m = a₀/(2sin(θ/2))、
+     α = w/(vk_θ) 单参数标度、第一壳层 v*/v = (1−3α²)/(1+6α²)（Eq. 8 与 SI）。
+   - 验证（`tests/test_moire.py`）：第一壳层解析速度（≤1%）、
+     **魔角 θ=1.05°**（BM Fig. 3）、k=0 双零模（BM SI）、
+     魔角平带 ~8 meV vs 2° 时 ~110 meV（BM Fig. 2d）。
+   - 实现注记：h 块相位取 θ→0 系综（BM SI 8 带推导同款近似，
+     "dependence of h(θ) on angle is parametrically small"），
+     该约定保证恒等式 Σ T_j(σ·q̂_j)T_j† = 0 严格成立——
+     保留 ±θ/2 相位会以 O(θ) 破坏相消干涉（魔角最小值抬高 ~40 倍）。
+
+9. **Xiao et al. 2012（TMD 谷物理原始文献）**
+   D. Xiao, G.-B. Liu, W. Feng, X. Xu, W. Yao,
+   "Coupled Spin and Valley Physics in Monolayers of MoS₂ and Other
+   Group-VI Dichalcogenides",
+   *Phys. Rev. Lett.* **108**, 196802 (2012).
+   arXiv: [1112.3144](https://arxiv.org/abs/1112.3144)（源码：`papers/arxiv/xiao2012/`）
+   - 用途：大质量 Dirac 模型 Berry 曲率解析式
+     Ω_c = −τ·2a²t²Δ′/(Δ′²+4a²t²k²)^{3/2}（`analysis/berry.py` 的
+     合成模型对账锚点）；谷选择光学定则与谷 Hall 物理表述；
+     Table（a, Δ, t, 2λ, Ω₁, Ω₂）可作 k·p 交叉参考。
+
+## 规划采用（待引入）
+
+9. **Cudazzo, Tokatly & Rubio 2011（二维屏蔽势原始推导）**
+   P. Cudazzo, I. V. Tokatly, A. Rubio,
+   "Dielectric screening in two-dimensional insulators: Implications for excitonic and
+   impurity states in graphane",
+   *Phys. Rev. B* **84**, 085406 (2011).
+   arXiv: [1104.3346](https://arxiv.org/abs/1104.3346)（源码：`papers/arxiv/cudazzo2011/`）
+   - 已用于：r₀ = 2πχ₂D 关系与 Keldysh 势形式的独立交叉确认
+     （V = e²/(4α₂D)[H₀−Y₀]，与 Berkelbach Eq. (1) 等价）；
+     graphane 激子有效质量参数（α=2.62/m₀, β=0.98/m₀, m_e=0.83m₀）。
+   - 注：graphane 的 α₂D 数值未在正文给出（仅图示），
+     故未用作 preset 默认值；如需 graphane 激子参数需补文献。
 
 ## 已删除/待定
 （无）
 
-## Phase 3 进展说明（激子模块）
+## Phase 3 进展说明（激子模块，2026-10-07 更新）
 
-2D 激子求解器框架已完成（Fourier–Bessel DVR + 广义本征值，
+2D 激子求解器（Fourier–Bessel DVR + 广义本征值，
 `vdw_studio/analysis/exciton.py`）：库仑极限下与 2D 氢原子精确谱
 E_n = −4Ry*/(2n+1)² 对账通过（N=250 时误差 <2%）；Keldysh 势的
-r₀→0 库仑极限逐点精确；束缚能随 r₀/ε_env 单调变化（物理趋势正确）。
-**待文献标定**：各材料的 r₀（二维极化长度）与 μ（约化质量）默认值——
-即 Cudazzo et al. PRB 84, 085406 (2011) 的 Table I 数值。
+r₀→0 库仑极限逐点精确。
+**材料默认值已标定**：MoS₂/MoSe₂/WS₂/WSe₂ 的 μ 与 χ₂D 取
+Berkelbach et al. PRB 88, 045318 (2013) Table（见上文条目 7），
+经 `tests/test_exciton.py::TestBerkelbachCalibration` 与文献变分
+束缚能对账（精确解 ≥ 变分下界，偏差 2–5%），材料排序
+MoS₂ > WS₂ > MoSe₂ > WSe₂ 复现。势形式与 Berkelbach Eq. (1)
+及 Cudazzo Eq. (int2) 逐项一致（双重文献交叉确认）。
+**仍缺**：hBN / graphane / MoTe₂ / WTe₂ 的 r₀ 数值（需补文献：
+hBN 可取 Olsen et al. 或 Latini et al. 的 χ₂D；graphane 需
+Cudazzo 正文之外的补充材料）。
 
 ## 待确认的约定（欢迎提供文献）
 
