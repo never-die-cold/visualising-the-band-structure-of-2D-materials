@@ -97,6 +97,42 @@ def valley_chern(hamiltonian, band: int, qmax: float,
     return float(c_half), float(flux)
 
 
+def valley_report(hamiltonian_K, hamiltonian_Kminus,
+                  band_v: int, band_c: int,
+                  qmax: float = 0.25, n_grid: int = 41) -> dict:
+    """谷物理一站式报告：Berry 曲率热图 + 两谷圆二色性 + 价带 Ω 峰值。
+
+    参数:
+        hamiltonian_K: K 谷 (τ=+1) 的 callable(q 2-vector) → 厄米矩阵。
+        hamiltonian_Kminus: −K 谷 (τ=−1) 的同签名 callable。
+        band_v / band_c: 价带/导带序号（能量升序）。
+        qmax: 热图半宽 (Å⁻¹)。
+        n_grid: 热图每边采样数。
+
+    返回:
+        dict(q=qs, omega=Ω 网格 (n,n), omega_vb_K=价带 Ω(K),
+             dichroism_K, dichroism_Kminus)
+    """
+    qs = np.linspace(-qmax, qmax, n_grid)
+    omega = np.zeros((n_grid, n_grid))
+    for i, qx in enumerate(qs):
+        for j, qy in enumerate(qs):
+            omega[i, j] = berry_curvature(hamiltonian_K,
+                                          np.array([qx, qy]), band=band_v)
+    d_k = optical_circular_dichroism(hamiltonian_K, np.array([5e-3, 0.0]),
+                                     band_v=band_v, band_c=band_c)
+    d_km = optical_circular_dichroism(hamiltonian_Kminus,
+                                      np.array([5e-3, 0.0]),
+                                      band_v=band_v, band_c=band_c)
+    return {
+        "q": qs,
+        "omega": omega,                    # 行 = qy (绘图时转置)
+        "omega_vb_K": float(omega[n_grid // 2, n_grid // 2]),
+        "dichroism_K": d_k,
+        "dichroism_Kminus": d_km,
+    }
+
+
 @dataclass
 class DichroismResult:
     """谷选择光学跃迁结果。"""

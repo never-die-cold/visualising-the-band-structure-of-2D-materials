@@ -81,10 +81,12 @@ class MainWindow(QMainWindow):
         self.band_canvas = MplCanvas(6.4, 4.8)
         self.dos_canvas = MplCanvas(4.4, 4.8)
         self.bz_canvas = MplCanvas(4.6, 4.4)
+        self.valley_canvas = MplCanvas(6.2, 4.6)
         for name, canvas in (("结构 (3D)", self.structure_canvas),
                              ("能带", self.band_canvas),
                              ("态密度", self.dos_canvas),
-                             ("布里渊区", self.bz_canvas)):
+                             ("布里渊区", self.bz_canvas),
+                             ("谷物理", self.valley_canvas)):
             self.tabs.addTab(canvas, name)
         self.setCentralWidget(self.tabs)
 
@@ -229,6 +231,9 @@ class MainWindow(QMainWindow):
         for w in (self.strain_x_spin, self.strain_y_spin,
                   self.strain_label):
             w.setEnabled(is_tb)
+        # 谷物理标签页仅 k·p 模型有意义
+        vidx = self.tabs.indexOf(self.valley_canvas)
+        self.tabs.setTabVisible(vidx, self.preset.engine == "kp")
         self.log(f"已加载材料: {self.preset.name} "
                  f"({self.structure.formula_str}, "
                  f"{self.structure.n_atoms} 原子/胞, 引擎 {self.preset.engine})")
@@ -346,6 +351,43 @@ class MainWindow(QMainWindow):
         ax = self.bz_canvas.fig.add_subplot(111)
         plot_bz_path(self.model.lattice, results["kpath"], ax=ax)
         self.bz_canvas.draw_idle()
+
+        # 谷物理页 (仅 k·p 模型)
+        if getattr(self.model, "hamiltonian", None) is not None and                 hasattr(self.model, "params"):
+            self.log("计算谷物理 (Berry 曲率/圆二色性)…")
+            from ..analysis.berry import valley_report
+            rep = valley_report(
+                lambda qq: self.model.hamiltonian(qq, +1),
+                lambda qq: self.model.hamiltonian(qq, -1),
+                band_v=1, band_c=3, qmax=0.25, n_grid=41)
+            self.valley_canvas.fig.clf()
+            ax = self.valley_canvas.fig.add_subplot(121)
+            om = rep["omega"].T
+            im = ax.imshow(om, origin="lower",
+                           extent=[-0.25, 0.25, -0.25, 0.25],
+                           cmap="RdBu_r",
+                           vmin=-np.abs(om).max(), vmax=np.abs(om).max())
+            ax.scatter([0], [0], marker="x", color="black", s=50)
+            ax.set_xlabel("q$_x$ (Å$^{-1}$)")
+            ax.set_ylabel("q$_y$ (Å$^{-1}$)")
+            ax.set_title("Ω$_{vb}$ (Å²) near K", fontsize=10)
+            self.valley_canvas.fig.colorbar(im, ax=ax, fraction=0.046)
+            ax2 = self.valley_canvas.fig.add_subplot(122)
+            dk, dkm = rep["dichroism_K"], rep["dichroism_Kminus"]
+            bars = ax2.bar([0, 1], [dk.f_plus, dkm.f_plus], 0.4,
+                           color="#c0392b", label="σ$^+$")
+            ax2.bar([0, 1], [dk.f_minus, dkm.f_minus], 0.4,
+                    color="#1f4e79", label="σ$^-$")
+            ax2.set_xticks([0, 1])
+            ax2.set_xticklabels(["K", "−K"])
+            ax2.set_ylabel("光学矩阵元² (eV²Å²)")
+            ax2.set_title("valley-selective excitation", fontsize=10)
+            ax2.legend(fontsize=8)
+            self.valley_canvas.fig.tight_layout()
+            self.valley_canvas.draw_idle()
+            self.log(f"谷物理: Ω_vb(K) = {rep['omega_vb_K']:.2f} Å²; "
+                     f"K 谷主导 {dk.dominant} (×{dk.ratio:.0f}), "
+                     f"−K 谷主导 {dkm.dominant} (×{dkm.ratio:.0f})")
 
         # 工程树结果
         def item(name, value):

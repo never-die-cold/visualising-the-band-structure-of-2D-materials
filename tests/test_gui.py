@@ -103,6 +103,16 @@ class TestMainWindow:
         assert min(gaps) == pytest.approx(1.67, abs=1e-6)
         win.close()
 
+    def test_valley_tab_visible_only_for_kp(self, app):
+        """谷物理标签页仅 k·p 预设可见。"""
+        win = MainWindow()
+        win.set_material("mos2_kp")
+        vidx = win.tabs.indexOf(win.valley_canvas)
+        assert win.tabs.isTabVisible(vidx)
+        win.set_material("graphene")
+        assert not win.tabs.isTabVisible(vidx)
+        win.close()
+
     def test_worker_thread_mode(self, app):
         """线程模式：run() 在子线程完成计算并填充结果盒（轮询模式）。"""
         win = MainWindow()
