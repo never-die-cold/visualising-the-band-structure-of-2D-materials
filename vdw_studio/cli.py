@@ -190,6 +190,17 @@ def cmd_run(args) -> int:
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"  输出目录: {out} (structure/bands/dos/bz PNG + npz + "
           "POSCAR + summary.json)")
+
+    # --- 结果数据库 ---
+    if args.db:
+        from .storage import ResultsDB
+        db = ResultsDB(args.db)
+        rid = db.record(material=p.key, engine=p.engine,
+                        formula=structure.formula_str,
+                        gap_eV=summary["gap"].get("gap_eV"),
+                        gap_direct=summary["gap"].get("direct"),
+                        payload=summary)
+        print(f"  已记录到结果数据库: {args.db} (id={rid})")
     return 0
 
 
@@ -205,6 +216,23 @@ def cmd_run_all(args) -> int:
                                 npoints=args.npoints, mesh=args.mesh,
                                 sigma=args.sigma)
         cmd_run(ns)
+    return 0
+
+
+def cmd_history(args) -> int:
+    from .storage import ResultsDB
+    db = ResultsDB(args.db)
+    rows = db.history(material=args.material, limit=args.limit)
+    if not rows:
+        print("(无记录)")
+        return 0
+    print(f"{'id':<5}{'时间 (UTC)':<21}{'材料':<12}{'引擎':<8}{'带隙 (eV)':<12}直接")
+    print("-" * 68)
+    for row in rows:
+        gap = "—" if row["gap_eV"] is None else f"{row['gap_eV']:.3f}"
+        direct = "—" if row["gap_direct"] is None else ("是" if row["gap_direct"] else "否")
+        print(f"{row['id']:<5}{row['timestamp']:<21}{row['material']:<12}"
+              f"{row['engine']:<8}{gap:<12}{direct}")
     return 0
 
 
@@ -235,6 +263,8 @@ def main(argv=None) -> int:
                        help="k 路径每段点数")
     p_run.add_argument("--mesh", type=int, default=48, help="DOS 网格边长")
     p_run.add_argument("--sigma", type=float, default=0.05, help="DOS 展宽 eV")
+    p_run.add_argument("--db", default=None,
+                       help="结果数据库路径 (指定后自动记录本次仿真)")
     p_run.set_defaults(func=cmd_run)
 
     p_all = sub.add_parser("run-all", help="批量运行全部预设")
@@ -248,6 +278,12 @@ def main(argv=None) -> int:
     p_exp.add_argument("material", help="材料名 (graphene/MoS2/…)")
     p_exp.add_argument("--out", default="structures")
     p_exp.set_defaults(func=cmd_export)
+
+    p_his = sub.add_parser("history", help="查询仿真历史 (SQLite)")
+    p_his.add_argument("--db", default="vdw_results.db", help="数据库路径")
+    p_his.add_argument("--material", default=None, help="按材料过滤")
+    p_his.add_argument("--limit", type=int, default=20)
+    p_his.set_defaults(func=cmd_history)
 
     args = parser.parse_args(argv)
     return args.func(args)
