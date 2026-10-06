@@ -1,11 +1,12 @@
 """2D 激子求解器测试（Fourier–Bessel DVR）。
 
-验证锚点（解析精确）：
-- 库仑极限（r₀=None）：2D 氢原子谱 E_n = −4Ry*/(2n+1)²，
-  Ry* = (μ/m₀)·13.6057/ε²；
-- Keldysh 势的 r₀→0 库仑极限（逐点）；
-- 束缚能随屏蔽（r₀↑ 或 ε↑）单调减弱；
-- 变分收敛：能量从上方单调逼近精确值。
+验证锚点：
+- **解析精确**：库仑极限（r₀=None）2D 氢原子谱 E_n = −4Ry*/(2n+1)²，
+  Ry* = (μ/m₀)·13.6057/ε²；Keldysh 势的 r₀→0 库仑极限（逐点）；
+  束缚能随屏蔽（r₀↑ 或 ε↑）单调减弱；变分收敛（能量从上方逼近）。
+- **文献标定**：Berkelbach et al., PRB 88, 045318 (2013) Table 的
+  4 种 TMD（μ、χ₂D、变分束缚能）——精确 DVR 解 ≥ 变分下界且偏差
+  ≤10%，材料排序 MoS₂ > WS₂ > MoSe₂ > WSe₂ 复现。
 """
 
 import numpy as np
@@ -17,6 +18,7 @@ from vdw_studio.analysis import (
     keldysh_potential,
     solve_exciton,
 )
+from vdw_studio.presets import get_exciton_params, solve_preset_exciton
 
 
 class TestPotentialLimits:
@@ -104,6 +106,66 @@ class TestKeldyshScreening:
         e_c = solve_exciton(self.MU, 1.0, r0=None, n_levels=1,
                             n_basis=250, n_quad=6000).binding_1s
         assert e_k < e_c
+
+
+class TestBerkelbachCalibration:
+    """文献标定：Berkelbach 2013 Table 的 TMD 激子参数复现。
+
+    Berkelbach, Hybertsen & Reichman, PRB 88, 045318 (2013) Table
+    （tab:binding）: μ (m₀)、χ₂D (Å)、激子 1s 束缚能（**变分法**, eV）。
+    r₀ = 2πχ₂D（Cudazzo 2011 关系；Berkelbach Eq. (1) 的 ρ₀ 等价，
+    真空 ε₁=ε₂=1 → 本模块 eps_env=1，势形式逐项一致）。
+
+    判据：变分能量是精确基态能量的**上界** → 文献束缚能是下界，
+    本精确 DVR 解应给出 E_b(DVR) ≥ E_b(var) 且接近（≤ +10%）。
+    """
+
+    # (预设 key, E_b 变分文献值 eV)
+    CASES = [
+        ("mos2_kp", 0.54),
+        ("mose2_kp", 0.47),
+        ("ws2_kp", 0.50),
+        ("wse2_kp", 0.45),
+    ]
+
+    @pytest.mark.parametrize("key,eb_var", CASES)
+    def test_binding_matches_variational_lower_bound(self, key, eb_var):
+
+
+        ex = get_exciton_params(key)
+        assert ex.eb_ref[0] == pytest.approx(eb_var)
+        r = solve_preset_exciton(key, eps_env=1.0, n_levels=1,
+                                 n_basis=250, n_quad=6000)
+        assert r.mu_over_m0 == ex.mu_over_m0
+        assert r.r0 == pytest.approx(ex.r0_angstrom)
+        assert r.binding_1s >= eb_var                      # 变分下界方向
+        assert r.binding_1s <= eb_var * 1.10               # 接近文献值
+
+    def test_material_trend_reproduced(self):
+        """束缚能排序 MoS₂ > WS₂ > MoSe₂ > WSe₂（Berkelbach 趋势）。"""
+        eb = {key: solve_preset_exciton(key, n_levels=1, n_basis=250,
+                                        n_quad=6000).binding_1s
+              for key, _ in self.CASES}
+        assert eb["mos2_kp"] > eb["ws2_kp"] > eb["mose2_kp"] > eb["wse2_kp"]
+
+    def test_dielectric_engineering_trend(self):
+        """介电工程: ε_env ↑（hBN 封装 ε≈4.5）→ 束缚能显著减弱。
+
+        文献趋势（ROADMAP Phase 3 锚点）：真空 ~0.5 eV → hBN 环境
+        ~0.15–0.3 eV 量级（此趋势测试用宽窗口）。
+        """
+        e_vac = solve_preset_exciton("mos2_kp", eps_env=1.0, n_levels=1,
+                                     n_basis=250, n_quad=6000).binding_1s
+        e_hbn = solve_preset_exciton("mos2_kp", eps_env=4.5, n_levels=1,
+                                     n_basis=400, n_quad=8000).binding_1s
+        assert e_hbn < 0.5 * e_vac
+        assert e_hbn > 0.05
+
+    def test_uncalibrated_material_raises(self):
+        """未标定材料（石墨烯等）应明确报错而非给无出处参数。"""
+
+        with pytest.raises(KeyError):
+            get_exciton_params("graphene")
 
 
 class TestApi:

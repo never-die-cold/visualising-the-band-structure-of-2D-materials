@@ -33,6 +33,24 @@ from ..structure.crystal import Crystal
 
 
 @dataclass
+class ExcitonParams:
+    """激子模块材料默认参数（文献溯源，防幻觉）。
+
+    - ``mu_over_m0``：电子–空穴约化质量 (m₀ 单位)；
+    - ``r0_angstrom``：Keldysh 二维极化长度 r₀ = 2πχ₂D (Å)
+      （Cudazzo et al., PRB 84, 085406 (2011) 的 χ₂D→r₀ 关系，
+       与 Berkelbach et al., PRB 88, 045318 (2013) Eq. (1) 的 ρ₀ 等价）；
+    - ``eb_ref``：(文献 1s 束缚能 eV, 相对容差)。文献值为**变分法**结果
+      （试探波函数上界 → 束缚能下界），精确求解器应给出 ≥ 且接近的值。
+    """
+
+    mu_over_m0: float
+    r0_angstrom: float
+    eb_ref: Optional[tuple] = None
+    source: str = ""
+
+
+@dataclass
 class MaterialPreset:
     """单个材料的预设配置。"""
 
@@ -49,6 +67,7 @@ class MaterialPreset:
     gap_note: str = ""                          # 带隙备注（零带隙/待验证等）
     mass_ref: Optional[tuple] = None            # (m1, m2) 参考 |m*| (m₀)
     v_fermi_ref: Optional[float] = None         # 费米速度参考 (m/s)
+    exciton: Optional[ExcitonParams] = None     # 激子默认参数（文献标定）
     source: str = ""                            # 参数与参考值出处
     tags: List[str] = field(default_factory=list)
 
@@ -142,8 +161,28 @@ _TMD_TAGS = {
     "WTe2": ["量子自旋液体候选"],
 }
 
+# --- 激子材料默认值（Berkelbach 2013 Table）-----------------------------
+# Berkelbach, Hybertsen & Reichman, PRB 88, 045318 (2013) Table（tab:binding）:
+#   μ (m₀)、χ₂D (Å)、激子 1s 束缚能（变分法, eV）；r₀ = 2πχ₂D (Cudazzo 2011)。
+_BERKELBACH_EXCITON = {
+    "MoS2":  (0.25, 6.60, 0.54),
+    "MoSe2": (0.27, 8.23, 0.47),
+    "WS2":   (0.16, 6.03, 0.50),
+    "WSe2":  (0.17, 7.18, 0.45),
+}
+_BERKELBACH_SOURCE = (
+    "Berkelbach, Hybertsen & Reichman, PRB 88, 045318 (2013) Table "
+    "(μ, χ₂D, E_b 变分)；r₀ = 2πχ₂D (Cudazzo, PRB 84, 085406 (2011))"
+)
+
 for _tmd in ("MoS2", "MoSe2", "WS2", "WSe2", "MoTe2", "WTe2"):
     _ref = TMD_REFERENCE_MASSES[_tmd]
+    _exciton = None
+    if _tmd in _BERKELBACH_EXCITON:
+        _mu, _chi, _eb = _BERKELBACH_EXCITON[_tmd]
+        _exciton = ExcitonParams(
+            mu_over_m0=_mu, r0_angstrom=2.0 * np.pi * _chi,
+            eb_ref=(_eb, 0.10), source=_BERKELBACH_SOURCE)
     _register(MaterialPreset(
         key=f"{_tmd.lower()}_kp", name=f"单层 {_tmd}（k·p）",
         formula=_tmd, category="TMD (k·p)", engine="kp",
@@ -154,11 +193,13 @@ for _tmd in ("MoS2", "MoSe2", "WS2", "WSe2", "MoTe2", "WTe2"):
         gap_ref=(_TMD_GAP[_tmd], 1e-6),
         gap_note="K 点最小（含 SOC）带隙 = E_bg（DFT 拟合值）",
         mass_ref=(min(_ref[:2]), max(_ref[2:])),
+        exciton=_exciton,
         source="Kormányos et al., 2D Mater. 2, 022001 (2015) (HSE,LDA) 参数",
         tags=_TMD_TAGS[_tmd],
     ))
 
 # --- TMD（sp³d⁵ 全 BZ 引擎，Zahid 2013）---------------------------------
+_mu, _chi, _eb = _BERKELBACH_EXCITON["MoS2"]
 _register(MaterialPreset(
     key="mos2_sp3d5", name="单层 MoS₂（sp³d⁵ 全 BZ）",
     formula="MoS2", category="TMD (sp³d⁵)", engine="sp3d5",
@@ -169,6 +210,9 @@ _register(MaterialPreset(
     gap_ref=None,
     gap_note="sp³d⁵ 引擎：H/S 厄米与 S(k) 正定已验证；带隙与文献吻合"
     "尚待 Nanoskif 相位约定确认（见 docs/REFERENCES.md）",
+    exciton=ExcitonParams(
+        mu_over_m0=_mu, r0_angstrom=2.0 * np.pi * _chi,
+        eb_ref=(_eb, 0.10), source=_BERKELBACH_SOURCE),
     source="Zahid et al., PRB 87, 125302 (2013) Table 3（96 参数）",
     tags=["全BZ", "量子输运级"],
 ))
@@ -188,6 +232,29 @@ def get_preset(key: str) -> MaterialPreset:
 def list_presets() -> List[str]:
     """全部预设键。"""
     return sorted(PRESETS)
+
+
+def get_exciton_params(key: str) -> ExcitonParams:
+    """材料的激子默认参数（r₀/μ/文献束缚能）；未标定则抛 KeyError。"""
+    p = get_preset(key)
+    if p.exciton is None:
+        raise KeyError(f"预设 {p.key} 尚无文献标定的激子参数")
+    return p.exciton
+
+
+def solve_preset_exciton(key: str, eps_env: float = 1.0,
+                         **solve_kw) -> "ExcitonResult":
+    """用预设的文献默认参数求解 2D 激子束缚能。
+
+    参数来自 :class:`ExcitonParams`（μ、r₀ 均有文献出处）；
+    ``eps_env`` 为环境介电常数（介电工程调谐），其余关键字
+    透传 :func:`vdw_studio.analysis.exciton.solve_exciton`。
+    """
+    from ..analysis.exciton import ExcitonResult, solve_exciton
+
+    ex = get_exciton_params(key)
+    return solve_exciton(mu_over_m0=ex.mu_over_m0, eps_env=eps_env,
+                         r0=ex.r0_angstrom, **solve_kw)
 
 
 def run_preset(key: str, n_per_segment: int = 40) -> Dict:

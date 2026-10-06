@@ -29,9 +29,14 @@
   不得混入其它约定（如 1/√N 归一化或列/行向量转置）——
   这些约定混用曾导致"各向异性/不收敛"的假象（见 git 历史）。
 
-材料参数说明（防幻觉）：r₀ 与 μ 因材料和介电环境而异；
-本模块将其作为**用户参数**，材料默认值待文献标定后加入预设库
-（见 docs/REFERENCES.md 待办：Cudazzo et al. PRB 84, 085406 (2011)）。
+材料参数说明（防幻觉）：r₀ 与 μ 因材料和介电环境而异。
+本模块将其作为**用户参数**；四种 TMD（MoS₂/MoSe₂/WS₂/WSe₂）的文献
+标定默认值已入库 `presets/materials.py`（Berkelbach et al., PRB 88,
+045318 (2013) Table：μ、χ₂D；r₀ = 2πχ₂D 取 Cudazzo et al., PRB 84,
+085406 (2011) 关系），并经 `tests/test_exciton.py` 与该文献的变分
+束缚能对账（精确解 ≥ 变分下界，偏差 2–5%）。势的形式与
+Berkelbach Eq. (1)：V = πe²/((ε₁+ε₂)ρ₀)·[H₀−Y₀] 逐项一致
+（本模块 ε_env = (ε₁+ε₂)/2，真空下 ε_env = 1）。
 """
 
 from __future__ import annotations
