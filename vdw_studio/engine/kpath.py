@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from ..structure.lattice import Lattice
+from ..numerics import integer
 
 # 倒格子分数坐标 (k1, k2)
 HIGH_SYMMETRY_POINTS: Dict[str, Dict[str, Tuple[float, float]]] = {
@@ -73,6 +74,19 @@ class KPath:
     points: Dict[str, Tuple[float, float]]
     path: List[str]
 
+    def __post_init__(self):
+        if len(self.path) < 2:
+            raise ValueError('path must contain at least two named points')
+        self.points = dict(self.points)
+        self.path = list(self.path)
+        for name in self.path:
+            if name not in self.points:
+                raise ValueError(f'Unknown path point {name!r}')
+            point = np.asarray(self.points[name], dtype=float)
+            if point.shape != (2,) or not np.isfinite(point).all():
+                raise ValueError('path points must contain two finite fractional coordinates')
+            self.points[name] = tuple(map(float, point))
+
     # ------------------------------------------------------------------
     @classmethod
     def for_lattice(cls, lattice: Lattice,
@@ -107,12 +121,11 @@ class KPath:
 
         返回:
             (kpoints, x_axis, ticks)
-            kpoints: (N, 3) 笛卡尔 k 点 (Å⁻¹)，z 分量为 0；
+            kpoints: (N, 3) 笛卡尔 k 点 (Å⁻¹)，保留倾斜平面的 z 分量；
             x_axis: (N,) 累积路径长度（绘图横轴，单位 Å⁻¹）；
             ticks: 高对称点在 x_axis 上的位置。
         """
-        if n_per_segment < 2:
-            raise ValueError("每段至少需要 2 个采样点")
+        n_per_segment = integer(n_per_segment, 'n_per_segment', minimum=2)
         recip = lattice.reciprocal_matrix
         kfrac_list: List[np.ndarray] = []
         for (p0, p1) in self.segments():
@@ -124,9 +137,9 @@ class KPath:
         kfrac_list.append(np.array(last))
         kfrac = np.array(kfrac_list)
 
-        kcart = np.c_[kfrac @ recip[:2, :2], np.zeros(len(kfrac))]
+        kcart = kfrac @ recip[:2]
         # 累积长度（段间断开处长度照常累计，绘图用 ticks 定位即可）
-        seg = np.linalg.norm(np.diff(kcart[:, :2], axis=0), axis=1)
+        seg = np.linalg.norm(np.diff(kcart, axis=0), axis=1)
         x_axis = np.concatenate([[0.0], np.cumsum(seg)])
         ticks = [0.0]
         for i in range(len(self.path) - 1):
