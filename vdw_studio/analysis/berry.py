@@ -34,15 +34,32 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 
 import numpy as np
+from ..numerics import finite_scalar, finite_vector, hermitian_matrix, integer
 
 
 def _velocity_matrices(hamiltonian, q: np.ndarray, dq: float = 1e-7):
     """速度算符 (v_x, v_y) = ∂H/∂q_(x,y)（中心差分，eV·Å）。"""
+    q = finite_vector(q, 2, 'q')
+    dq = finite_scalar(dq, 'dq', positive=True)
     def H(dx, dy):
-        return hamiltonian(np.array([q[0] + dx, q[1] + dy]))
+        return hermitian_matrix(hamiltonian(np.array([q[0] + dx, q[1] + dy])))
     Hx = (H(dq, 0) - H(-dq, 0)) / (2 * dq)
     Hy = (H(0, dq) - H(0, -dq)) / (2 * dq)
     return Hx, Hy
+
+
+def _band_index(band, size, name='band'):
+    band = integer(band, name, minimum=0)
+    if band >= size:
+        raise ValueError(f'{name} is outside the Hamiltonian basis')
+    return band
+
+
+def _check_isolated_band(energies, band):
+    gaps = np.abs(energies - energies[band])
+    gaps[band] = np.inf
+    if np.min(gaps) <= 1e-10:
+        raise ValueError('Single-band Berry/orbital analysis is undefined at degeneracy')
 
 
 def berry_curvature(hamiltonian, q, band: int,
@@ -53,10 +70,12 @@ def berry_curvature(hamiltonian, q, band: int,
         hamiltonian: callable(q 2-vector) → 厄米矩阵 (eV)。
         band: 按能量升序的带序号。
     """
-    q = np.asarray(q, dtype=float)
-    H0 = hamiltonian(q)
+    q = finite_vector(q, 2, 'q')
+    H0 = hermitian_matrix(hamiltonian(q))
+    band = _band_index(band, len(H0))
     Hx, Hy = _velocity_matrices(hamiltonian, q, dq)
     E, V = np.linalg.eigh(H0)
+    _check_isolated_band(E, band)
     # 本征基下的速度矩阵
     vx = V.conj().T @ Hx @ V
     vy = V.conj().T @ Hy @ V
@@ -80,6 +99,11 @@ def valley_chern(hamiltonian, band: int, qmax: float,
         (C_half, flux) — C_half = flux/(2π)。
     """
     # 高斯–勒让德 × 均匀角度 采样
+    qmax = finite_scalar(qmax, 'qmax', positive=True)
+    n_theta = integer(n_theta, 'n_theta', minimum=3)
+    n_rad = integer(n_rad, 'n_rad')
+    if valley not in (-1, 1):
+        raise ValueError('valley must be -1 or +1')
     xs, ws = np.polynomial.legendre.leggauss(n_rad)
     radii = qmax * (xs + 1) / 2
     wr = qmax * ws / 2
@@ -99,7 +123,7 @@ def valley_chern(hamiltonian, band: int, qmax: float,
 
 def valley_report(hamiltonian_K, hamiltonian_Kminus,
                   band_v: int, band_c: int,
-                  qmax: float = 0.25, n_grid: int = 41) -> dict:
+                  qmax: float = 0.25, n_grid: int = 41, *, cancel_check=None) -> dict:
     """谷物理一站式报告：Berry 曲率热图 + 两谷圆二色性 + 价带 Ω 峰值。
 
     参数:
@@ -113,9 +137,15 @@ def valley_report(hamiltonian_K, hamiltonian_Kminus,
         dict(q=qs, omega=Ω 网格 (n,n), omega_vb_K=价带 Ω(K),
              dichroism_K, dichroism_Kminus)
     """
+    qmax = finite_scalar(qmax, 'qmax', positive=True)
+    n_grid = integer(n_grid, 'n_grid', minimum=3)
+    if n_grid % 2 == 0:
+        raise ValueError('n_grid must be odd to sample the valley center')
     qs = np.linspace(-qmax, qmax, n_grid)
     omega = np.zeros((n_grid, n_grid))
     for i, qx in enumerate(qs):
+        if cancel_check is not None:
+            cancel_check()
         for j, qy in enumerate(qs):
             omega[i, j] = berry_curvature(hamiltonian_K,
                                           np.array([qx, qy]), band=band_v)
@@ -150,8 +180,12 @@ def optical_circular_dichroism(hamiltonian, q, band_v: int, band_c: int,
     F_± = |⟨c| v_x ± i v_y |v⟩|²——q→0 时单一圆偏振主导，
     且 K (τ=+1) 与 −K (τ=−1) 谷的选择相反。
     """
-    q = np.asarray(q, dtype=float)
-    H0 = hamiltonian(q)
+    q = finite_vector(q, 2, 'q')
+    H0 = hermitian_matrix(hamiltonian(q))
+    band_v = _band_index(band_v, len(H0), 'band_v')
+    band_c = _band_index(band_c, len(H0), 'band_c')
+    if band_v >= band_c:
+        raise ValueError('band_v must be below band_c')
     Hx, Hy = _velocity_matrices(hamiltonian, q, dq)
     E, V = np.linalg.eigh(H0)
     vx = V.conj().T @ Hx @ V

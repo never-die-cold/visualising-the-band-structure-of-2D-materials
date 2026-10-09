@@ -46,7 +46,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .berry import _velocity_matrices
+from .berry import _velocity_matrices, _band_index, _check_isolated_band
+from ..numerics import finite_scalar, finite_vector, hermitian_matrix, integer
 
 # ħ²/(2m₀) = 3.809982 eV·Å²（与 exciton.py 共享同一常数）
 HBAR2_OVER_2M0 = 3.809982
@@ -62,10 +63,12 @@ def orbital_moment(hamiltonian, q, band: int, dq: float = 1e-6) -> float:
         band: 按能量升序的带序号。
         q: 相对谷中心的笛卡尔波矢 (Å⁻¹)。
     """
-    q = np.asarray(q, dtype=float)
-    H0 = hamiltonian(q)
+    q = finite_vector(q, 2, 'q')
+    H0 = hermitian_matrix(hamiltonian(q))
+    band = _band_index(band, len(H0))
     Hx, Hy = _velocity_matrices(hamiltonian, q, dq)
     E, V = np.linalg.eigh(H0)
+    _check_isolated_band(E, band)
     vx = V.conj().T @ Hx @ V
     vy = V.conj().T @ Hy @ V
     n = band
@@ -85,6 +88,10 @@ def orbital_moment_map(hamiltonian, band: int, qmax: float,
         dict(q=qs, moment=(n,n) 网格, moment_center=谷心磁矩)
         行 = qy（绘图时转置，与 valley_report 相同）。
     """
+    qmax = finite_scalar(qmax, 'qmax', positive=True)
+    n_grid = integer(n_grid, 'n_grid', minimum=3)
+    if n_grid % 2 == 0:
+        raise ValueError('n_grid must be odd to sample the valley center')
     qs = np.linspace(-qmax, qmax, n_grid)
     moment = np.zeros((n_grid, n_grid))
     for i, qx in enumerate(qs):
@@ -114,6 +121,8 @@ def valley_zeeman_splitting(moment_mu_b: float, b_tesla: float) -> ValleyZeemanR
     时间反演: m(−K) = −m(K) → 两谷能移相反，劈裂为单谷磁移的 2 倍
     （RMP: ε_M = ε − m·B）。
     """
+    moment_mu_b = finite_scalar(moment_mu_b, 'moment_mu_b')
+    b_tesla = finite_scalar(b_tesla, 'b_tesla')
     split = -2.0 * moment_mu_b * MU_B_MEV_PER_T * b_tesla
     return ValleyZeemanResult(moment_mu_b=moment_mu_b, b_tesla=b_tesla,
                               splitting_mev=float(split),
