@@ -3,10 +3,14 @@ SQLite persistence layer for calculation metadata and task history.
 """
 
 import sqlite3
+import os
+import tempfile
+from contextlib import contextmanager
 import json
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+from utils.paths import app_data_dir
 
 
 class Database:
@@ -15,19 +19,47 @@ class Database:
     自动创建 tasks 表和 settings 表。
     """
 
-    def __init__(self, db_path: str = "data/bandviz.db"):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = Path(db_path) if db_path is not None else app_data_dir() / 'bandviz.db'
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        if db_path is None:
+            self._import_legacy(Path('data/bandviz.db'))
         self._init_tables()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self):
         conn = sqlite3.connect(str(self.db_path))
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
+    def _import_legacy(self, source):
+        if self.db_path.exists() or not source.exists():
+            return
+        descriptor, name = tempfile.mkstemp(dir=self.db_path.parent, suffix='.db.tmp')
+        os.close(descriptor)
+        temporary = Path(name)
+        try:
+            old = sqlite3.connect(source.resolve().as_uri() + '?mode=ro', uri=True)
+            new = sqlite3.connect(temporary)
+            try:
+                old.backup(new)
+            finally:
+                old.close()
+                new.close()
+            os.replace(temporary, self.db_path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def _init_tables(self):
         """初始化数据库表结构"""
         with self._connect() as conn:
+            version = conn.execute('PRAGMA user_version').fetchone()[0]
+            if version > 1:
+                raise ValueError(f'Unsupported BandViz database schema version: {version}')
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
                     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,6 +97,7 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_tasks_gap ON tasks(band_gap);
             """)
             conn.commit()
+            conn.execute('PRAGMA user_version=1')
 
     # ------------------------------------------------------------------
     # Task CRUD
