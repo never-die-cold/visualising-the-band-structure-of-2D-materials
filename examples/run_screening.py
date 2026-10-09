@@ -32,6 +32,9 @@ from vdw_studio.engine.models import (
 )
 from vdw_studio.engine.strain import apply_strain
 from vdw_studio.storage import ResultsDB
+from vdw_studio.presets import get_preset
+from vdw_studio.task_state import SimulationSnapshot, _json_state
+from vdw_studio.reproducibility import provenance, task_key, canonical_hash
 
 # 能带筛选: 材料 → (模型工厂, 占据带数)
 TB_MATERIALS = {
@@ -45,63 +48,84 @@ STRAINS = (-0.02, 0.0, 0.02)
 EPSS = (1.0, 2.5, 4.0)
 
 
-def screen_bands(db: ResultsDB) -> None:
-    print("=" * 66)
-    print("能带筛选: TB 材料 × 双轴应变 (键长标度律, n=2)")
-    print("=" * 66)
-    print(f"{'材料':<14}{'ε=−2%':>10}{'ε=0':>10}{'ε=+2%':>10}   可调性")
+def screen_bands(db: ResultsDB, *, resume=False, mesh=(24, 24)) -> int:
+    print("能带筛选: TB 材料 × 双轴应变 (指数 2；全区带边搜索)")
+    failed = 0
+    code = provenance()
     for name, (factory, n_occ) in TB_MATERIALS.items():
-        gaps = []
         for eps in STRAINS:
-            model = apply_strain(factory(), ex=eps, ey=eps, exponent=2.0)
-            g = analyze_gap(model, n_per_segment=24, n_valence=n_occ).gap
-            gaps.append(g)
-        cells = [(f"{g:.3f}" if g is not None else "0") for g in gaps]
-        tunable = ("金属→隙" if gaps[0] is None and gaps[-1] is not None
-                   else "隙→金属" if gaps[0] is not None and gaps[-1] is None
-                   else "—" if gaps[0] is None
-                   else f"Δ={abs(gaps[-1]-gaps[0]):.2f} eV")
-        print(f"{name:<14}{cells[0]:>10}{cells[1]:>10}{cells[2]:>10}   {tunable}")
-        for eps, g in zip(STRAINS, gaps):
-            db.record(material=name, engine="tb",
-                      formula=name, gap_eV=g,
-                      gap_direct=(g is not None),
-                      payload={"strain": eps, "screen": "bands"})
-    print()
+            identity = canonical_hash({'request': [name, eps, list(mesh), n_occ], 'code': code})
+            payload = {'schema_version': 1, 'provenance': code, 'screen': 'bands',
+                       'strain': eps, 'strain_exponent': 2., 'mesh': list(mesh)}
+            try:
+                model = apply_strain(factory(), ex=eps, ey=eps, exponent=2.)
+                preset = get_preset(name)
+                snapshot = SimulationSnapshot.capture(preset, model,
+                    preset.make_structure(preset.structure_key), strain=(eps, eps),
+                    n_per_segment=24, gap_mesh=mesh)
+                payload['task'] = snapshot.to_dict()
+                identity = task_key(payload['task'], code)
+                previous = db.find_task(identity) if resume else None
+                if previous and previous['status'] == 'completed':
+                    print(f"{name} {eps:+.1%}: 恢复已有任务")
+                    continue
+                gap = analyze_gap(model, n_per_segment=24, n_valence=n_occ, mesh=mesh)
+                payload['gap'] = _json_state(gap)
+                db.record(name, 'tb', formula=snapshot.make_structure().formula_str,
+                    gap_eV=gap.gap, gap_direct=gap.direct, payload=payload, task_key=identity)
+                print(f"{name} {eps:+.1%}: gap={gap.gap}, direct={gap.direct}, status={gap.status}")
+            except Exception as exc:
+                failed += 1
+                db.record(name, 'tb', payload=payload, task_key=identity, status='failed',
+                          error=f'{type(exc).__name__}: {exc}')
+                print(f"{name} {eps:+.1%}: 失败 {exc}")
+    return failed
 
 
-def screen_excitons(db: ResultsDB) -> None:
-    print("=" * 66)
-    print("激子筛选: Keldysh 势 × 环境介电常数 (μ=0.25, r₀=30 Å 示例参数)")
-    print("=" * 66)
-    print(f"{'ε_env':<10}{'E_b 1s (eV)':>14}{'相对 (vs ε=1)':>16}")
-    base = None
+def screen_excitons(db: ResultsDB, *, resume=False) -> int:
+    print("激子筛选: 示例 μ=0.25, r₀=30 Å；不代替材料标定")
+    failed = 0
+    code = provenance()
     for eps in EPSS:
-        r = solve_exciton(mu_over_m0=0.25, eps_env=eps, r0=30.0,
-                          n_levels=1, n_basis=250, n_quad=5000)
-        if base is None:
-            base = r.binding_1s
-        rel = r.binding_1s / base * 100
-        print(f"{eps:<10.1f}{r.binding_1s:>14.4f}{rel:>15.1f}%")
-        db.record(material="exciton_demo", engine="keldysh",
-                  formula="—", gap_eV=None, gap_direct=None,
-                  payload={"screen": "excitons", "eps_env": eps,
-                           "r0_A": 30.0, "mu_over_m0": 0.25,
-                           "binding_1s_eV": r.binding_1s})
-    print("  → 介电工程: 高 ε 衬底 (hBN 封装/高介电栅介) 压制激子束缚\n")
+        params = dict(mu_over_m0=.25, eps_env=eps, r0=30.,
+                      n_levels=1, n_basis=250, n_quad=5000,
+                      r_max=max(1200., 30 * eps / .25 * .529))
+        identity = canonical_hash({'exciton': params, 'code': code})
+        if resume:
+            previous = db.find_task(identity)
+            if previous and previous['status'] == 'completed':
+                print(f"eps_env={eps}: 恢复已有任务")
+                continue
+        payload = {'schema_version': 1, 'provenance': code, 'screen': 'excitons',
+                   'parameters': params, 'source': 'demonstration parameters, not material calibrated'}
+        try:
+            result = solve_exciton(**params)
+            payload['result'] = _json_state(result)
+            db.record('exciton_demo', 'keldysh', payload=payload, task_key=identity)
+            print(f"eps_env={eps}: binding_1s={result.binding_1s}, status={result.status}")
+        except Exception as exc:
+            failed += 1
+            db.record('exciton_demo', 'keldysh', payload=payload, task_key=identity,
+                      status='failed', error=f'{type(exc).__name__}: {exc}')
+            print(f"eps_env={eps}: 失败 {exc}")
+    return failed
 
 
-def main() -> None:
+def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--db", default="screening.db",
+    parser.add_argument("--db", default="results/screening.db",
                         help="结果数据库路径")
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--csv", default=None)
     args = parser.parse_args()
     db = ResultsDB(args.db)
-    screen_bands(db)
-    screen_excitons(db)
+    failed = screen_bands(db, resume=args.resume) + screen_excitons(db, resume=args.resume)
+    if args.csv:
+        db.export_csv(args.csv)
     print(f"全部结果已写入数据库: {args.db}")
     print(f"查询: python -m vdw_studio.cli history --db {args.db}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
