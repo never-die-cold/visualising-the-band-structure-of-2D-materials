@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""为课程论文生成真实计算结果与插图"""
+"""为课程论文生成合成教学能带的数值分析结果与插图。"""
 import sys, os, time, tracemalloc, json
 from pathlib import Path
 
@@ -29,7 +29,7 @@ def setup_plot():
     plt.rcParams["axes.unicode_minus"] = False
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
-ROOT = Path(r"C:\Users\ASUS\visualising the band structure of 2D materials")
+ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 from core.parser import VASPEigenvalParser
 from core.band_analyzer import BandAnalyzer
@@ -46,9 +46,9 @@ def load(mat):
     return p.parse()
 
 # ---------- 1. 解析 + 分析 ----------
-for mat, lat in [("graphene", 2.46), ("mos2", 3.16)]:
+for mat in ["graphene", "mos2"]:
     data = load(mat)
-    an = BandAnalyzer(data, lattice_constant_angstrom=lat)
+    an = BandAnalyzer(data)
     gap = an.get_band_gap()
     masses = an.estimate_effective_masses_at_gap()
     results[mat] = {
@@ -56,6 +56,8 @@ for mat, lat in [("graphene", 2.46), ("mos2", 3.16)]:
         "nb": int(data.energies.shape[1]),
         "ne": int(data.num_electrons),
         "gap": gap, "masses": masses,
+        "mass_fit_reports": an.mass_fit_reports_at_gap(),
+        "k_distance_unit": data.distance_unit, "lattice_source": data.lattice_source,
         "labels": data.kpoint_labels,
     }
     print(mat, json.dumps(results[mat], ensure_ascii=False, default=str))
@@ -66,7 +68,7 @@ def bench(path, sigma=0.1):
     t0 = time.perf_counter()
     d = VASPEigenvalParser(str(path)).parse()
     t1 = time.perf_counter()
-    dos = DosAnalyzer(d.energies)
+    dos = DosAnalyzer.from_band_data(d)
     dos.calculate_dos(energy_range=(-8, 8), num_points=1000, sigma=sigma)
     t2 = time.perf_counter()
     _, peak = tracemalloc.get_traced_memory()
@@ -84,15 +86,18 @@ perf["mos2"] = bench(ROOT / "data" / "example" / "mos2" / "EIGENVAL")
 _src = (ROOT / "data" / "example" / "mos2" / "EIGENVAL").read_text().splitlines()
 _d = load("mos2")
 out = list(_src[:6])  # 原文件头部 6 行
+out[4] = "Synthetic repeated MoS2 benchmark"
+out[5] = f"  {_d.nelect:g}  {_d.nkpoints * 4}  {_d.nbands}"
 for rep in range(4):
     for ik in range(_d.energies.shape[0]):
         kx, ky, kz = _d.kpoints[ik]
-        out.append(f"   {kx:.8f}   {ky:.8f}   {kz:.8f}   0.01724138")
+        out.append("")
+        out.append(f"   {kx:.8f}   {ky:.8f}   {kz:.8f}   {1 / (_d.nkpoints * 4):.12f}")
         for ib in range(_d.energies.shape[1]):
-            out.append(f"     {ib + 1}    {_d.energies[ik, ib]:.10f}    1.000000")
+            out.append(f"     {ib + 1}    {_d.energies[ik, ib]:.10f}    {_d.occupations[ik, ib]:.6f}")
         out.append("")
 big = ROOT / "data" / "example" / "mos2_x4_EIGENVAL"
-big.write_text("\n".join(out))
+big.write_text("\n".join(out) + "\n", encoding="utf-8")
 perf["mos2_x4"] = bench(big)
 print("PERF", json.dumps(perf, ensure_ascii=False))
 
@@ -134,7 +139,7 @@ plot_band("mos2", "fig_mos2_band.png", "单层 MoS$_2$ 能带结构（Γ-M-K-Γ�
 # ---------- 4. DOS 图 ----------
 def get_dos(mat, sigma):
     d = load(mat)
-    return DosAnalyzer(d.energies).calculate_dos(energy_range=(-8, 8), num_points=1200, sigma=sigma)
+    return DosAnalyzer.from_band_data(d).calculate_dos(energy_range=(-8, 8), num_points=1200, sigma=sigma)
 
 # 4a. 总/价带/导带 DOS
 dos = get_dos("mos2", 0.1)
@@ -143,7 +148,7 @@ ax.plot(dos.energies, dos.total_dos, color="#333333", lw=1.4, label="总 DOS")
 ax.fill_between(dos.energies, dos.vb_dos, color="#1f5fa8", alpha=0.55, label="价带 DOS")
 ax.fill_between(dos.energies, dos.cb_dos, color="#d62728", alpha=0.45, label="导带 DOS")
 ax.axvline(0, color="gray", ls="--", lw=0.9)
-ax.set_xlabel("E − E$_F$ (eV)"); ax.set_ylabel("DOS (a.u.)")
+ax.set_xlabel("E − E$_F$ (eV)"); ax.set_ylabel("K-point spectrum (states/eV)")
 ax.set_title("单层 MoS$_2$ 态密度（σ = 0.10 eV）")
 ax.legend()
 fig.savefig(FIGDIR / "fig_mos2_dos_vbcb.png", dpi=220, bbox_inches="tight")
@@ -155,7 +160,7 @@ for sigma, c in [(0.05, "#1f5fa8"), (0.15, "#e08600"), (0.30, "#d62728")]:
     d = get_dos("mos2", sigma)
     ax.plot(d.energies, d.total_dos, lw=1.3, color=c, label=f"σ = {sigma:.2f} eV")
 ax.axvline(0, color="gray", ls="--", lw=0.9)
-ax.set_xlabel("E − E$_F$ (eV)"); ax.set_ylabel("DOS (a.u.)")
+ax.set_xlabel("E − E$_F$ (eV)"); ax.set_ylabel("K-point spectrum (states/eV)")
 ax.set_title("单层 MoS$_2$ 总态密度随展宽参数 σ 的变化")
 ax.legend()
 fig.savefig(FIGDIR / "fig_mos2_dos_sigma.png", dpi=220, bbox_inches="tight")
