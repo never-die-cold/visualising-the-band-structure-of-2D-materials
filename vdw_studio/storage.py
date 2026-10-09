@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import csv
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List, Optional
@@ -41,28 +43,51 @@ class ResultsDB:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
+            version = conn.execute('PRAGMA user_version').fetchone()[0]
+            if version > 1:
+                raise ValueError(f'Unsupported results database schema version: {version}')
             conn.executescript(_SCHEMA)
+            columns = {row['name'] for row in conn.execute('PRAGMA table_info(runs)')}
+            for name, declaration in [('task_key', 'TEXT'), ('status', "TEXT NOT NULL DEFAULT 'completed'"),
+                                      ('error', 'TEXT'), ('schema_version', 'INTEGER NOT NULL DEFAULT 1')]:
+                if name not in columns:
+                    conn.execute(f'ALTER TABLE runs ADD COLUMN {name} {declaration}')
+            conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_task_key ON runs(task_key)')
+            conn.execute('PRAGMA user_version=1')
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self):
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     # ------------------------------------------------------------------
     def record(self, material: str, engine: str,
                formula: str = "", gap_eV: Optional[float] = None,
                gap_direct: Optional[bool] = None,
-               payload: Optional[dict[str, Any]] = None) -> int:
+               payload: Optional[dict[str, Any]] = None, *, task_key=None,
+               status='completed', error=None) -> int:
         """写入一条仿真记录，返回记录 id。"""
+        if status not in ('completed', 'failed'):
+            raise ValueError('status must be completed or failed')
         with self._connect() as conn:
             cur = conn.execute(
                 "INSERT INTO runs (timestamp, material, engine, formula,"
-                " gap_eV, gap_direct, payload) VALUES (?,?,?,?,?,?,?)",
+                " gap_eV, gap_direct, payload, task_key, status, error, schema_version) VALUES (?,?,?,?,?,?,?,?,?,?,1)"
+                " ON CONFLICT(task_key) DO UPDATE SET timestamp=excluded.timestamp,"
+                " material=excluded.material, engine=excluded.engine, formula=excluded.formula,"
+                " gap_eV=excluded.gap_eV, gap_direct=excluded.gap_direct, payload=excluded.payload,"
+                " status=excluded.status, error=excluded.error, schema_version=excluded.schema_version",
                 (datetime.now(timezone.utc).isoformat(timespec="seconds"),
                  material, engine, formula,
                  gap_eV, None if gap_direct is None else int(gap_direct),
-                 json.dumps(payload or {}, ensure_ascii=False)))
-            return int(cur.lastrowid)
+                 json.dumps(payload or {}, ensure_ascii=False, allow_nan=False), task_key, status, error))
+            return int(cur.lastrowid) if task_key is None else int(conn.execute(
+                'SELECT id FROM runs WHERE task_key=?', (task_key,)).fetchone()['id'])
 
     def history(self, material: Optional[str] = None,
                 limit: int = 50) -> List[dict]:
@@ -84,3 +109,27 @@ class ResultsDB:
             d["payload"] = json.loads(d["payload"] or "{}")
             out.append(d)
         return out
+
+    def export_csv(self, path, material=None):
+        rows = self.history(material=material, limit=-1)
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        fields = ['id', 'timestamp', 'material', 'engine', 'formula', 'gap_eV',
+                  'gap_direct', 'status', 'error', 'task_key', 'schema_version', 'payload']
+        with target.open('w', encoding='utf-8-sig', newline='') as stream:
+            writer = csv.DictWriter(stream, fieldnames=fields)
+            writer.writeheader()
+            for row in rows:
+                row['payload'] = json.dumps(row['payload'], ensure_ascii=False, allow_nan=False)
+                writer.writerow({key: row.get(key) for key in fields})
+        return len(rows)
+
+    def find_task(self, task_key):
+        with self._connect() as conn:
+            row = conn.execute('SELECT * FROM runs WHERE task_key=?', (task_key,)).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result['payload'] = json.loads(result['payload'])
+        result['gap_direct'] = None if result['gap_direct'] is None else bool(result['gap_direct'])
+        return result
