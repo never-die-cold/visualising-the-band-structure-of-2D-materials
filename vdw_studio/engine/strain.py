@@ -53,6 +53,8 @@ def apply_strain(model: "TightBindingModel",
     if not hasattr(model, "hoppings") or not hasattr(model, "lattice"):
         raise TypeError("apply_strain 仅支持位点型紧束缚模型 "
                         "(engine.models 家族)")
+    if not np.isfinite([ex, ey, exponent]).all() or min(ex, ey) <= -1 or exponent <= 0:
+        raise ValueError('Strain must be finite and greater than -1; exponent must be finite and positive')
     if ex == 0.0 and ey == 0.0:
         return model
 

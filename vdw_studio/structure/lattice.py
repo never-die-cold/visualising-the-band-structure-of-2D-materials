@@ -32,10 +32,12 @@ class Lattice:
         m = np.asarray(matrix, dtype=float)
         if m.shape != (3, 3):
             raise ValueError(f"晶格矩阵必须为 3×3, 收到 shape={m.shape}")
+        if not np.isfinite(m).all():
+            raise ValueError('lattice matrix must contain finite components')
         det = np.linalg.det(m)
         if abs(det) < 1e-8:
             raise ValueError("晶格矩阵奇异（体积为零），请检查晶格基矢")
-        self.matrix = m
+        self.matrix = m.copy()
 
     # ------------------------------------------------------------------
     # 常用构造
@@ -151,10 +153,16 @@ class Lattice:
     # 应变（二维材料仿真常用调控手段）
     # ------------------------------------------------------------------
     def scaled_xy(self, sx: float = 1.0, sy: float = 1.0) -> "Lattice":
-        """面内双轴/单轴应变后的新晶格（不缩放真空层方向）。"""
+        """Homogeneous Cartesian x/y deformation, keeping z components fixed.
+
+        Row lattice A transforms as A @ diag(sx, sy, 1). For ordinary xy slabs
+        the z-directed vacuum vector is unchanged. Scaling rows instead would
+        strain the lattice-vector lengths, rather than Cartesian x/y.
+        """
+        if not np.isfinite([sx, sy]).all() or min(sx, sy) <= 0:
+            raise ValueError('Cartesian strain scale factors must be finite and positive')
         m = self.matrix.copy()
-        m[0, :2] *= sx
-        m[1, :2] *= sy
+        m[:, :2] *= [sx, sy]
         return Lattice(m)
 
     def is_hexagonal(self, tol: float = 1e-4) -> bool:

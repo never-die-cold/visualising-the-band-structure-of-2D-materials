@@ -34,7 +34,10 @@ class TestScalingLaw:
         a_new, _, c_new, _, _, gamma_new = gs.lattice.parameters()
         assert a_new == pytest.approx(2.46 * 1.05)
         assert c_new == pytest.approx(g.lattice.parameters()[2])  # 真空层不变
-        assert gamma_new == pytest.approx(120.0, abs=1e-6)  # a1 沿 x 时 γ 不变
+        # A Cartesian x stretch changes the oblique a2 angle as well as a1.
+        expected_gamma = np.degrees(np.arccos(-1.05 / np.sqrt(1.05 ** 2 + 3)))
+        assert gamma_new == pytest.approx(expected_gamma, abs=1e-6)
+        np.testing.assert_allclose(gs.lattice.matrix, g.lattice.matrix @ np.diag([1.05, 1., 1.]))
 
     def test_original_model_untouched(self):
         g = HoneycombModel(a=2.46, t=-2.7)
