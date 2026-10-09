@@ -9,6 +9,9 @@ dist/
 .eggs/
 .venv/
 venv/
+.venv-install-check/
+.install-check/
+.pytest_cache/
 env/
 .idea/
 .vscode/
@@ -25,3 +28,4 @@ logs/
 # 文献源码 (本地参考, 不入库)
 papers/arxiv/
 examples/output/
+results/
