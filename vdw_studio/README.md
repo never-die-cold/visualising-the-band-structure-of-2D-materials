@@ -1,7 +1,7 @@
 # vdW Studio — 二维半导体仿真平台
 
 > 本仓库的第二个版本，位于 `vdw_studio/` 包，与根目录的树莓派轻量可视化版
-> （[BandViz](../README.md)）相互独立、互不依赖。
+> （[BandViz](../README.md)）使用独立入口，共用本仓库的发行包与少量持久化工具。
 > 设计上仿照 Materials Studio / VESTA / QuantumATK 的工作流，后续将加入
 > 面向二维材料科研前沿的特色功能（见 [docs/ROADMAP.md](../docs/ROADMAP.md)）。
 
@@ -38,12 +38,13 @@ vdW Studio 内置材料结构库与多种仿真引擎，不依赖外部第一性
   - **sp³d⁵ Slater-Koster 非正交引擎**（MoS₂ 全 BZ，96 参数，开发中）
 - **性质分析** — 带隙（直接/间接判据 + 高对称点标注）、有效质量（任意方向）、
   主质量（曲率张量本征分解，各向异性特征量）、费米速度
+  （[坐标/方向与步长约定](../docs/DERIVATIVE_COORDINATES.md)；默认方向为倒格基矢组合）
 - **可视化** — 3D 球棍结构图、能带图、DOS、布里渊区与 k 路径
 - **图形界面** — 工程树 + 多标签结果页（结构/能带/DOS/布里渊区）+ 参数面板 +
   后台计算线程
 - **命令行** — 批量仿真与结构导出
 - **谷物理** — Berry 曲率热图、谷半 Chern 数、圆偏振选择定则
-  （K/−K 强度比 >10⁴，时间反演精确验证）
+  （局部模型的解析/时间反演基准；不表示全 BZ 拓扑积分）
 - **谷磁矩与谷 Zeeman** — 轨道磁矩通式（RMP 2010 波包表述）+
   带边 μ*_B = (m₀/m*)·μ_B + 谷劈裂 ΔE = −2m·μ_B·B，
   三路独立实现对账（RMP 原式有限差分 / 速度矩阵元 / 两带解析）
@@ -52,23 +53,22 @@ vdW Studio 内置材料结构库与多种仿真引擎，不依赖外部第一性
   按 Berkelbach 2013 Table 文献标定，精确解与文献变分束缚能对账
   （偏差 2–5%），`solve_preset_exciton()` 一键介电工程调谐
 - **转角 moiré 引擎** — Bistritzer–MacDonald 连续模型（任意转角
-  平面波展开）：**魔角 θ=1.05° 数值复现**、第一壳层解析速度
-  v*/v=(1−3α²)/(1+6α²)、k=0 双零模、魔角平带 ~8 meV
+  平面波展开，实验性）：现有第一壳层速度和 k=0 锚点通过；有限 k 的 C₃、周期性与截断收敛仍需 T16 验证，现有平带图作为研究示例
 - **结果数据库** — SQLite 记录每次仿真（材料/参数/结果 JSON），
   高通量批量筛选与历史查询（CLI `history`）
-- **物理自检** — 298 项单元测试全部通过；每个模型的带隙/有效质量/劈裂
-  与文献数值自动对账，每个参数标注文献出处（防幻觉机制）
+- **自动验证** — 项目测试覆盖物理基准、全区与路径带隙、VASP 输入、真实 GUI 后台运行与 CLI；最新验证结果见项目待办记录
+  [验证记录](../docs/PROJECT_REVIEW_PLAN.md)；已验证模型的带隙/有效质量/劈裂与参考值对账，参数标注文献出处
 
 ---
 
 ## 快速开始
 
 ```bash
-# 依赖（与树莓派版共用）
-pip install -r requirements.txt
+# Python 3.12+，安装两个应用及依赖
+python -m pip install .
 
 # 图形界面
-python -m vdw_studio.gui
+vdw-studio
 
 # 命令行：单材料仿真（输出 PNG/npz/POSCAR/summary.json）
 python -m vdw_studio.cli run mos2_kp --out results/mos2
@@ -76,12 +76,23 @@ python -m vdw_studio.cli run mos2_kp --out results/mos2
 # 命令行：批量运行全部材料
 python -m vdw_studio.cli run-all --out results/batch
 
+# 批量运行并记录数据库
+python -m vdw_studio.cli run-all --out results/batch --db results/runs.db
+
 # 导出结构（POSCAR/XYZ）
 python -m vdw_studio.cli export MoS2 --out structures
 
 # 运行测试（物理验证对账）
 python -m pytest tests/
 ```
+
+k·p 预设显示 K 谷附近的局部能带（|q| ≤ 0.25 Å⁻¹）、有效质量和谷物理。
+该模型未提供全布里渊区 DOS：GUI 的 DOS 页说明原因，CLI 的 `summary.json`
+记录 `dos.available=false`，不生成 DOS 文件。
+
+`run-all` 输出 `batch_summary.json`，逐材料记录成功、失败或跳过状态。
+某个材料失败后继续计算其余材料；存在失败时返回退出码 1，否则返回 0。
+带隙尚未验证的 `mos2_sp3d5` 预设继续跳过。
 
 示例脚本（生成 README 用图）：
 
@@ -111,7 +122,7 @@ python examples/export_all_structures.py  # 全部材料结构导出
 | MoTe₂ | k·p | 0.997 eV (K) | 0.997 eV | |
 | WTe₂ | k·p | 0.792 eV (K) | 0.792 eV | |
 | MoS₂ (sp³d⁵) | SK 非正交 | 待验证 | 1.805 eV | 框架就绪，待 Nanoskif 相位约定（见 ROADMAP） |
-| 转角双层石墨烯 | BM 连续模型 | 0（魔角平带） | — | 魔角 1.05° 复现（BM Fig. 3）；v*/v=(1−3α²)/(1+6α²) 精确；平带 ~8 meV |
+| 转角双层石墨烯 | 实验性 BM | 待分级验证 | — | 局部锚点通过；全域对称性/截断收敛待 T16 |
 
 ---
 
@@ -123,7 +134,7 @@ vdw_studio/
 ├── structure/        # 晶格、晶体、二维材料构建器
 │   ├── lattice.py    #   晶格矩阵/倒格子/应变缩放
 │   ├── crystal.py    #   原子/周期近邻/成键判定/超胞
-│   └── builders.py   #   10 种二维材料构建器
+│   └── builders.py   #   11 种二维材料构建器
 ├── engine/
 │   ├── kpath.py      #   高对称点与 k 路径（Γ-M-K-Γ 等）
 │   ├── models.py     #   位点紧束缚模型（石墨烯/hBN/硅烯/磷烯/双层）
@@ -149,13 +160,13 @@ vdw_studio/
 
 - A. Kormányos *et al.*, **2D Mater. 2**, 022001 (2015)（TMD k·p 与材料参数总表）
 - A. Kormányos *et al.*, **Phys. Rev. B 88**, 045416 (2013)
-- F. Zahid *et al.*, **Phys. Rev. B 87**, 125302 (2013)（MoS₂ sp³d⁵ TB）
+- F. Zahid *et al.*, **AIP Advances 3**, 052111 (2013)（MoS₂ sp³d⁵ TB）
 - A. N. Rudenko & M. I. Katsnelson, **Phys. Rev. B 89**, 201408(R) (2014)（黑磷烯）
 - S. Reich *et al.*, **Phys. Rev. B 66**, 035412 (2002)（石墨烯 TB）
 - D. Xiao, M.-C. Chang, Q. Niu, **Rev. Mod. Phys. 82**, 1959 (2010)（Berry 相位/轨道磁矩）
 - D. Xiao *et al.*, **Phys. Rev. Lett. 108**, 196802 (2012)（TMD 谷物理）
 - T. C. Berkelbach *et al.*, **Phys. Rev. B 88**, 045318 (2013)（TMD 激子参数）
-- R. Bistritzer & A. H. MacDonald, **Phys. Rev. B 84**, 035440 (2011)（转角石墨烯 moiré）
+- R. Bistritzer & A. H. MacDonald, **PNAS 108**, 12233–12237 (2011)（转角石墨烯 moiré）
 
 ---
 
@@ -168,3 +179,10 @@ vdw_studio/
 ## 许可证
 
 MIT License
+
+
+周期 TB 的材料带隙现在采用全区网格与局部带边搜索，路径带隙单独保留。`run` / `run-all` 可用 `--gap-mesh 24` 设置初始网格，并用两倍网格检查收敛；结果 JSON 保存计算域、带边坐标和收敛信息。k·p 保持局部谷域，实验性 SK 保持路径结果。详见 [带隙分析范围与判据](../docs/GAP_ANALYSIS.md)。
+
+安装入口/平台限制见 [安装说明](../docs/INSTALLATION.md)，复现、恢复与 CSV 命令见 [结果复现](../docs/REPRODUCIBILITY.md)。示例脚本与论文插图不是新增功能的可靠性证明；输出保存在忽略的 results/ 或 examples/output/ 中。
+
+全部计算约定、工程说明与交付记录见 [文档索引](../docs/README.md)。
