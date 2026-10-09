@@ -3,6 +3,7 @@
 from .properties import (
     GapResult,
     analyze_gap,
+    analyze_path_gap,
     effective_mass,
     fermi_velocity,
     principal_masses,
@@ -17,7 +18,7 @@ from .orbital_moment import (
 )
 
 __all__ = [
-    "GapResult", "analyze_gap", "effective_mass",
+    "GapResult", "analyze_gap", "analyze_path_gap", "effective_mass",
     "fermi_velocity", "principal_masses",
     "berry_curvature", "valley_chern",
     "optical_circular_dichroism", "DichroismResult",
