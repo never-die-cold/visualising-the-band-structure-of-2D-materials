@@ -47,6 +47,7 @@ from typing import Optional
 import numpy as np
 import scipy.linalg
 from scipy import special
+from ..numerics import finite_scalar, integer
 
 # e²/(4πε₀) = 14.3996 eV·Å（库仑常数）
 COULOMB_CONST = 14.3996
@@ -65,6 +66,10 @@ def keldysh_potential(r, r0: float, eps_env: float = 1.0) -> np.ndarray:
         eps_env: 环境介电常数（乘性屏蔽）。
     """
     r = np.asarray(r, dtype=float)
+    r0 = finite_scalar(r0, 'r0', positive=True)
+    eps_env = finite_scalar(eps_env, 'eps_env', positive=True)
+    if not np.isfinite(r).all() or np.any(r <= 0):
+        raise ValueError('r must contain finite positive radii')
     rho = r / r0
     # scipy.special.struve(0, ρ) = H₀(ρ); special.y0(ρ) = Y₀(ρ)
     return -(COULOMB_CONST / eps_env) * (np.pi / 2) * \
@@ -73,7 +78,11 @@ def keldysh_potential(r, r0: float, eps_env: float = 1.0) -> np.ndarray:
 
 def coulomb_potential(r, eps_env: float = 1.0) -> np.ndarray:
     """纯库仑参考势 −e²/(4πε₀ε_env·r) (eV)。"""
-    return -COULOMB_CONST / (eps_env * np.asarray(r, dtype=float))
+    eps_env = finite_scalar(eps_env, 'eps_env', positive=True)
+    r = np.asarray(r, dtype=float)
+    if not np.isfinite(r).all() or np.any(r <= 0):
+        raise ValueError('r must contain finite positive radii')
+    return -COULOMB_CONST / (eps_env * r)
 
 
 def _r_times_potential(r: np.ndarray, r0: Optional[float],
@@ -98,12 +107,15 @@ class ExcitonResult:
     """激子能级求解结果。"""
 
     energies: np.ndarray      # (n_levels,) 束缚态能量 (eV, 负值)
-    binding_1s: float         # 1s 束缚能 = −E₀ (eV)
+    binding_1s: Optional[float]  # None when the finite basis finds no bound state
     r0: Optional[float]       # 极化长度 (None = 纯库仑)
     eps_env: float
     mu_over_m0: float         # 约化质量 (m₀ 单位)
     r_max: float = 0.0        # 径向盒子尺寸 (Å)
     n_basis: int = 0          # Bessel 基函数数目
+    status: str = 'bound-states-found'
+    requested_levels: int = 0
+    bound_states_in_basis: int = 0
 
     def rydberg(self) -> float:
         """有效 Rydberg Ry* = (μ/m₀)·13.6057/ε² (eV)。"""
@@ -133,8 +145,19 @@ def solve_exciton(mu_over_m0: float = 0.25,
     返回:
         :class:`ExcitonResult`（能量升序，负值为束缚态）。
     """
-    if mu_over_m0 <= 0 or eps_env <= 0:
-        raise ValueError("μ 与 ε_env 必须为正")
+    mu_over_m0 = finite_scalar(mu_over_m0, 'mu_over_m0', positive=True)
+    eps_env = finite_scalar(eps_env, 'eps_env', positive=True)
+    if r0 is not None:
+        r0 = finite_scalar(r0, 'r0', positive=True)
+    n_basis = integer(n_basis, 'n_basis')
+    n_quad = integer(n_quad, 'n_quad', minimum=3)
+    n_levels = integer(n_levels, 'n_levels')
+    if n_levels > n_basis:
+        raise ValueError('n_levels cannot exceed n_basis')
+    if n_quad < n_basis + 1:
+        raise ValueError('n_quad must be at least n_basis + 1 to resolve the basis')
+    if r_max is not None:
+        r_max = finite_scalar(r_max, 'r_max', positive=True)
     hbar2_over_2mu = HBAR2_OVER_2M0 / mu_over_m0   # ħ²/(2μ) eV·Å²
 
     if r_max is None:
@@ -163,8 +186,11 @@ def solve_exciton(mu_over_m0: float = 0.25,
     # 广义本征值问题 H c = E·N c (度量 = diag(Nₙ))
     H = T + V
     eig = scipy.linalg.eigh(H, np.diag(norms), eigvals_only=True)
-    bound = eig[eig < 0][:n_levels]
-    return ExcitonResult(energies=bound, binding_1s=float(-bound[0]),
+    all_bound = eig[eig < 0]
+    bound = all_bound[:n_levels]
+    status = 'no-bound-state' if not len(bound) else 'partial-bound-spectrum' if len(bound) < n_levels else 'bound-states-found'
+    return ExcitonResult(energies=bound, binding_1s=float(-bound[0]) if len(bound) else None,
                          r0=r0, eps_env=eps_env,
                          mu_over_m0=mu_over_m0,
-                         r_max=float(r_max), n_basis=int(n_basis))
+                         r_max=float(r_max), n_basis=int(n_basis), status=status,
+                         requested_levels=n_levels, bound_states_in_basis=len(all_bound))

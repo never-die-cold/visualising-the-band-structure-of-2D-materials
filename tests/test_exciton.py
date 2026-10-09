@@ -188,6 +188,8 @@ class TestApi:
         n_basis = 50
         R = 60.0
         j0 = special.jn_zeros(0, n_basis)
-        assert np.allclose(j0 / R, j0 / R)  # 平凡自洽; 占位以固定约定
+        # Test an independently known fundamental J₀ root and hard-wall mode.
+        assert j0[0] == pytest.approx(2.404825557695773, rel=1e-13)
+        assert special.j0((j0[0] / R) * R) == pytest.approx(0., abs=1e-12)
         # J₀(j₀,ₙ) = 0
         assert np.all(np.abs(special.j0(j0)) < 1e-12)
