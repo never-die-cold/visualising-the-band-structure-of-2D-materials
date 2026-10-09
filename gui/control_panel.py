@@ -21,6 +21,10 @@ class ControlPanel(QWidget):
         self.btn_load = QPushButton("Load EIGENVAL")
         self.btn_load.clicked.connect(self._on_load)
         file_layout.addWidget(self.btn_load)
+        self.btn_cancel = QPushButton('Cancel task')
+        self.btn_cancel.setEnabled(False)
+        self.btn_cancel.clicked.connect(lambda: self.main_window.cancel_tasks() if self.main_window else None)
+        file_layout.addWidget(self.btn_cancel)
         file_group.setLayout(file_layout)
         layout.addWidget(file_group)
 
@@ -107,9 +111,13 @@ class ControlPanel(QWidget):
         self.label_gap = QLabel("Band Gap: --")
         self.label_vbm = QLabel("VBM: --")
         self.label_cbm = QLabel("CBM: --")
+        self.label_vbm_mass = QLabel("VBM m* (path): --")
+        self.label_cbm_mass = QLabel("CBM m* (path): --")
         result_layout.addWidget(self.label_gap)
         result_layout.addWidget(self.label_vbm)
         result_layout.addWidget(self.label_cbm)
+        result_layout.addWidget(self.label_vbm_mass)
+        result_layout.addWidget(self.label_cbm_mass)
         result_group.setLayout(result_layout)
         layout.addWidget(result_group)
 
@@ -142,6 +150,7 @@ class ControlPanel(QWidget):
         self.progress_bar.setVisible(visible)
         self.label_status.setText(message)
         self.btn_load.setEnabled(not visible)
+        self.btn_cancel.setEnabled(visible)
 
     # ------------------------------------------------------------------
     # 回调
@@ -181,13 +190,27 @@ class ControlPanel(QWidget):
         if self.main_window:
             self.main_window.export_figure('svg')
 
-    def update_analysis(self, gap_info: dict):
+    def update_analysis(self, gap_info: dict, mass_reports=None):
         """更新分析结果显示"""
         if gap_info['gap'] is not None:
-            self.label_gap.setText(f"Band Gap: {gap_info['gap']} eV")
-            self.label_vbm.setText(f"VBM: {gap_info['vbm']} eV")
-            self.label_cbm.setText(f"CBM: {gap_info['cbm']} eV")
+            state = gap_info.get('status', '')
+            self.label_gap.setText(f"Sampled Gap: {gap_info['gap']:.6g} eV ({state})")
         else:
-            self.label_gap.setText("Band Gap: --")
-            self.label_vbm.setText("VBM: --")
-            self.label_cbm.setText("CBM: --")
+            self.label_gap.setText("Sampled Gap: undetermined")
+        self.label_gap.setToolTip(gap_info.get('reason', ''))
+        self.label_vbm.setText(f"VBM: {gap_info['vbm']:.6g} eV" if gap_info['vbm'] is not None else "VBM: --")
+        self.label_cbm.setText(f"CBM: {gap_info['cbm']:.6g} eV" if gap_info['cbm'] is not None else "CBM: --")
+        for edge, label in (('vbm', self.label_vbm_mass), ('cbm', self.label_cbm_mass)):
+            report = (mass_reports or {}).get(edge, {})
+            mass = report.get('mass_m0')
+            value = f"{mass:.4g} m₀" if mass is not None else 'unavailable'
+            label.setText(f"{edge.upper()} m* (path): {value}")
+            details = [report.get('reason', 'No fit diagnostics')]
+            if mass is not None:
+                details.extend([f"Signed band curvature mass; direction {report['direction_cartesian']}",
+                                f"Samples {report['indices']}; span {report['span_angstrom_inv']:.6g} Å⁻¹",
+                                f"Fit RMS {report['rms_eV']:.3g} eV; relative curvature error "
+                                f"{report['curvature_relative_error']:.3g}"])
+                if report.get('window_curvature_change') is not None:
+                    details.append(f"Window curvature change {report['window_curvature_change']:.3g}")
+            label.setToolTip('\n'.join(details))
