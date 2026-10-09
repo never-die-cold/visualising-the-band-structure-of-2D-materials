@@ -7,7 +7,7 @@ callable" 兼容性问题，包括树莓派常见的安装组合）。改用结�
 
 - :meth:`SimulationWorker.run` 在子线程执行全部计算，把进度文本、
   最终结果与异常写入普通 Python 属性（GIL 保证赋值原子性）；
-- 主窗口用 ``QTimer`` 周期读取 :attr:`new_progress` / :attr:`done`
+- 主窗口用 ``QTimer`` 周期读取 :attr:`progress_messages` / :attr:`done`
   并在**主线程**更新界面（Qt 界面操作永远留在主线程）。
 
 对测试而言，直接同步调用 ``run()`` 即可获得 ``result``，无需事件循环。
@@ -17,26 +17,35 @@ from __future__ import annotations
 
 import traceback
 from typing import Optional
+from copy import deepcopy
+from threading import Event
 
 from PyQt5.QtCore import QThread
 
-from ..analysis.properties import GapResult, analyze_gap
-from ..engine.kpath import KPath
-from ..engine.solver import BandStructure, DOSResult, solve_bands, solve_dos
+from ..simulation import simulate
+from ..task_state import encode_model_state
 
 
 class SimulationWorker(QThread):
-    """能带 + DOS + 带隙分析的后台线程（轮询模式，无 Qt 信号）。"""
+    """按模型能力计算能带、DOS 与性质的后台线程。"""
 
     def __init__(self, model, n_per_segment: int = 40,
                  dos_mesh: tuple = (48, 48), dos_sigma: float = 0.05,
-                 n_valence: Optional[int] = None, parent=None) -> None:
+                 n_valence: Optional[int] = None, parent=None, *,
+                 lattice=None, include_valley: bool = False, snapshot=None) -> None:
         super().__init__(parent)
-        self.model = model
-        self.n_per_segment = n_per_segment
-        self.dos_mesh = dos_mesh
-        self.dos_sigma = dos_sigma
-        self.n_valence = n_valence
+        self.model = deepcopy(model)
+        if snapshot is not None and encode_model_state(self.model) != snapshot.model_state_json:
+            raise ValueError('Runtime model does not match the immutable task snapshot')
+        self.n_per_segment = n_per_segment if snapshot is None else snapshot.n_per_segment
+        self.dos_mesh = tuple(dos_mesh) if snapshot is None else snapshot.dos_mesh
+        self.dos_sigma = dos_sigma if snapshot is None else snapshot.dos_sigma
+        self.n_valence = n_valence if snapshot is None else snapshot.n_valence
+        self.lattice = deepcopy(lattice) if snapshot is None else snapshot.make_structure().lattice
+        self.include_valley = include_valley if snapshot is None else snapshot.include_valley
+        self.snapshot = snapshot
+        self._cancel_requested = Event()
+        self.cancelled = False
 
         self.progress_messages: list = []   # 子线程写, 主线程读
         self.result: Optional[dict] = None
@@ -47,24 +56,36 @@ class SimulationWorker(QThread):
     def log_progress(self, msg: str) -> None:
         self.progress_messages.append(msg)
 
+    def cancel(self):
+        self._cancel_requested.set()
+        self.requestInterruption()
+
+    def check_interruption(self):
+        if self._cancel_requested.is_set() or self.isInterruptionRequested():
+            raise InterruptedError('Simulation cancelled')
+
     def compute(self) -> dict:
         """完整计算流程（可在任意线程同步调用）。"""
-        self.log_progress("生成 k 路径…")
-        kpath = KPath.for_lattice(self.model.lattice)
-        self.log_progress("求解能带…")
-        band: BandStructure = solve_bands(self.model, kpath,
-                                          self.n_per_segment)
-        self.log_progress("计算态密度…")
-        dos: DOSResult = solve_dos(self.model, mesh=self.dos_mesh,
-                                   sigma=self.dos_sigma)
-        self.log_progress("分析带隙与有效质量…")
-        gap: GapResult = analyze_gap(self.model, kpath,
-                                     n_valence=self.n_valence)
-        return {"band": band, "dos": dos, "gap": gap, "kpath": kpath}
+        result = simulate(
+            self.model, self.n_per_segment, self.dos_mesh, self.dos_sigma,
+            self.n_valence, lattice=self.lattice,
+            include_valley=self.include_valley,
+            gap_mesh=(24, 24) if self.snapshot is None else self.snapshot.gap_mesh,
+            cancel_check=self.check_interruption,
+            on_progress=self.log_progress)
+        if self.snapshot is not None:
+            result['snapshot'] = self.snapshot
+            result['task_id'] = self.snapshot.task_id
+            result['structure'] = self.snapshot.make_structure()
+        return result
 
     def run(self) -> None:  # noqa: D102
         try:
             self.result = self.compute()
+            self.check_interruption()
+        except InterruptedError:
+            self.result = None
+            self.cancelled = True
         except Exception as exc:  # noqa: BLE001 — 界面需要完整错误上报
             self.error = (f"{type(exc).__name__}: {exc}\n"
                           f"{traceback.format_exc()}")
