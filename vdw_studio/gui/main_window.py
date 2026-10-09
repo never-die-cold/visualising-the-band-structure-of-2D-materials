@@ -33,14 +33,18 @@ from PyQt5.QtWidgets import (
 from ..analysis.properties import effective_mass
 from ..engine.solver import BandStructure, DOSResult
 from ..io import write_poscar, write_xyz
-from ..presets import PRESETS, get_preset, list_presets
+from ..presets import get_preset, list_presets
+from ..simulation import KP_DOS_REASON
 from ..visualization import (
     plot_band_structure,
     plot_bz_path,
     plot_dos,
     plot_structure,
+    setup_cjk_fonts,
 )
 from .workers import SimulationWorker
+from ..task_state import SimulationSnapshot, align_structure
+from ..visualization.fonts import plot_text
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -57,6 +61,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
+        setup_cjk_fonts()
         self.setWindowTitle("vdW Studio — 二维半导体仿真平台")
         self.resize(1280, 820)
 
@@ -65,9 +70,14 @@ class MainWindow(QMainWindow):
         self.model = None
         self.worker: Optional[SimulationWorker] = None
         self._results: dict = {}
+        self._active_snapshot = None
+        self._base_structure = None
+        self._closing = False
 
         self._build_ui()
         self._connect()
+        self._poll_timer = QTimer(self)
+        self._poll_timer.timeout.connect(self._poll_worker)
         self.log("vdW Studio 就绪。选择材料后点击“运行仿真”。")
         self.set_material("mos2_kp")
 
@@ -150,6 +160,9 @@ class MainWindow(QMainWindow):
             "font-weight:bold;border-radius:4px}"
             "QPushButton:disabled{background:#9aa7b5}")
         form.addRow(self.run_button)
+        self.cancel_button = QPushButton('取消仿真')
+        self.cancel_button.setEnabled(False)
+        form.addRow(self.cancel_button)
 
         self.source_label = QLabel()
         self.source_label.setWordWrap(True)
@@ -181,7 +194,7 @@ class MainWindow(QMainWindow):
         menu_file.addAction("导出结构(&E)…", self.export_structure)
         menu_file.addAction("退出(&Q)", self.close)
         menu_sim = self.menuBar().addMenu("仿真(&S)")
-        menu_sim.addAction("运行仿真(&R)", self.run_simulation)
+        self.run_action = menu_sim.addAction("运行仿真(&R)", self.run_simulation)
         menu_help = self.menuBar().addMenu("帮助(&H)")
         menu_help.addAction("关于(&A)", self._about)
 
@@ -198,28 +211,83 @@ class MainWindow(QMainWindow):
     def _connect(self) -> None:
         self.material_combo.currentIndexChanged.connect(self._on_material)
         self.run_button.clicked.connect(self.run_simulation)
+        self.cancel_button.clicked.connect(self.cancel_simulation)
+        for widget in (self.strain_x_spin, self.strain_y_spin, self.field_spin,
+                       self.kpoint_spin, self.mesh_spin, self.sigma_spin):
+            widget.valueChanged.connect(self._on_parameters_changed)
+
+    def _on_parameters_changed(self):
+        if self.preset is None or self._poll_timer.isActive():
+            return
+        self._active_snapshot = None
+        self._results = {}
+        self._rebuild_model()
+        self._draw_structure()
+        self._fill_tree()
+        self._clear_result_plots()
+
+    def _clear_result_plots(self):
+        for canvas in (self.band_canvas, self.dos_canvas, self.bz_canvas, self.valley_canvas):
+            canvas.fig.clf()
+            canvas.ax = canvas.fig.add_subplot(111)
+            canvas.ax.text(.5, .5, plot_text('参数已更新，请运行仿真', 'Parameters changed; run simulation'),
+                           ha='center', va='center', transform=canvas.ax.transAxes)
+            canvas.ax.set_axis_off()
+            canvas.draw_idle()
+
+    def _set_busy(self, busy: bool) -> None:
+        """运行期间保持材料与参数一致，按模型能力恢复控件。"""
+        self.run_button.setEnabled(not busy)
+        self.run_action.setEnabled(not busy)
+        self.cancel_button.setEnabled(busy and not self._closing)
+        for widget in (self.material_combo, self.kpoint_spin, self.field_spin):
+            widget.setEnabled(not busy)
+        is_tb = self.preset.engine == "tb"
+        for widget in (self.strain_x_spin, self.strain_y_spin, self.strain_label):
+            widget.setEnabled(not busy and is_tb)
+        for widget in (self.sigma_spin, self.mesh_spin):
+            widget.setEnabled(not busy and self.preset.engine != "kp")
+
+    def _show_dos_unavailable(self, reason: str) -> None:
+        self.dos_canvas.fig.clf()
+        ax = self.dos_canvas.fig.add_subplot(111)
+        ax.text(0.5, 0.5, plot_text(reason, 'BZ DOS unavailable for the local valley model'), ha="center", va="center",
+                wrap=True, transform=ax.transAxes)
+        ax.set_axis_off()
+        self.dos_canvas.draw_idle()
 
     # ------------------------------------------------------------------
     # 材料切换
     # ------------------------------------------------------------------
     def set_material(self, key: str) -> None:
         """切换材料预设（供测试与外部调用）。"""
+        if self._poll_timer.isActive():
+            self.log("请等待当前仿真完成后切换材料。")
+            return
         idx = next(i for i in range(self.material_combo.count())
                    if self.material_combo.itemData(i) == key)
         self.material_combo.setCurrentIndex(idx)
 
     def _on_material(self) -> None:
+        if self._poll_timer.isActive():
+            self.material_combo.blockSignals(True)
+            self.material_combo.setCurrentIndex(self.material_combo.findData(self.preset.key))
+            self.material_combo.blockSignals(False)
+            return
         key = self.material_combo.currentData()
         if not key:
             return
         self.preset = get_preset(key)
         try:
-            self.structure = self.preset.make_structure(
+            self._base_structure = self.preset.make_structure(
                 self.preset.structure_key)
         except Exception as exc:  # noqa: BLE001
             self.log(f"结构构建失败: {exc}")
             return
         self._rebuild_model()
+        self._active_snapshot = None
+        self._results = {}
+        self._clear_result_plots()
         self._draw_structure()
         self._fill_tree()
         self.source_label.setText(self.preset.source)
@@ -234,6 +302,9 @@ class MainWindow(QMainWindow):
         # 谷物理标签页仅 k·p 模型有意义
         vidx = self.tabs.indexOf(self.valley_canvas)
         self.tabs.setTabVisible(vidx, self.preset.engine == "kp")
+        self._set_busy(False)
+        if self.preset.engine == "kp":
+            self._show_dos_unavailable(KP_DOS_REASON)
         self.log(f"已加载材料: {self.preset.name} "
                  f"({self.structure.formula_str}, "
                  f"{self.structure.n_atoms} 原子/胞, 引擎 {self.preset.engine})")
@@ -251,6 +322,7 @@ class MainWindow(QMainWindow):
                 self.model,
                 ex=self.strain_x_spin.value() / 100.0,
                 ey=self.strain_y_spin.value() / 100.0)
+        self.structure = align_structure(self._base_structure, self.model)
 
     # ------------------------------------------------------------------
     # 结构视图与工程树
@@ -289,11 +361,22 @@ class MainWindow(QMainWindow):
     # 运行仿真
     # ------------------------------------------------------------------
     def run_simulation(self) -> None:
-        if self.worker is not None and self.worker.isRunning():
+        if self._closing:
+            return
+        if self._poll_timer.isActive():
             self.log("仿真已在运行中…")
             return
         self._rebuild_model()
-        self.run_button.setEnabled(False)
+        self._results = {}
+        self._draw_structure()
+        self._fill_tree()
+        self._active_snapshot = SimulationSnapshot.capture(
+            self.preset, self.model, self.structure,
+            strain=(self.strain_x_spin.value() / 100., self.strain_y_spin.value() / 100.) if self.preset.engine == 'tb' else (0., 0.),
+            electric_field=self.field_spin.value() if self.preset.key in ('silicene', 'bilayer_graphene') else 0.,
+            n_per_segment=self.kpoint_spin.value(), dos_mesh=(self.mesh_spin.value(),) * 2,
+            dos_sigma=self.sigma_spin.value(), include_valley=self.preset.engine == 'kp')
+        self._set_busy(True)
         self.progress.setRange(0, 0)     # 忙碌指示
         self.log(f"开始仿真: {self.preset.name} "
                  f"(k点/段={self.kpoint_spin.value()}, "
@@ -302,15 +385,20 @@ class MainWindow(QMainWindow):
             self.model, n_per_segment=self.kpoint_spin.value(),
             dos_mesh=(self.mesh_spin.value(), self.mesh_spin.value()),
             dos_sigma=self.sigma_spin.value(),
-            n_valence=self.preset.n_valence if self.preset.engine != "kp"
-            else 2)
+            n_valence=self.preset.n_valence,
+            lattice=self.structure.lattice,
+            include_valley=self.preset.engine == "kp", snapshot=self._active_snapshot)
         self.worker.start()
         # 轮询模式：QTimer 主线程周期检查进度/完成（不依赖 Qt 信号,
         # 规避部分 PyQt5+Python3.12 组合的 emit 兼容性问题）
         self._progress_seen = 0
-        self._poll_timer = QTimer(self)
-        self._poll_timer.timeout.connect(self._poll_worker)
         self._poll_timer.start(80)
+
+    def cancel_simulation(self):
+        if self.worker is not None and self.worker.isRunning():
+            self.worker.cancel()
+            self.cancel_button.setEnabled(False)
+            self.status_label.setText('正在取消…')
 
     def _poll_worker(self) -> None:
         """主线程轮询后台线程的进度与完成状态。"""
@@ -321,45 +409,58 @@ class MainWindow(QMainWindow):
         while self._progress_seen < len(msgs):
             self.log(msgs[self._progress_seen])
             self._progress_seen += 1
-        if w.done:
+        if w.done and not w.isRunning():
             self._poll_timer.stop()
-            if w.error:
+            if self._closing:
+                self.close()
+            elif w.cancelled:
+                self._active_snapshot = None
+                self.progress.setRange(0, 1)
+                self.progress.setValue(0)
+                self._set_busy(False)
+                self.status_label.setText('已取消')
+                self.log('仿真已取消。')
+            elif w.error:
                 self._on_error(w.error)
             else:
                 self._on_results(w.result)
 
     def _on_results(self, results: dict) -> None:
+        snapshot = results.get('snapshot')
+        if snapshot is not None and (self._active_snapshot is None or snapshot.task_id != self._active_snapshot.task_id):
+            self.log('忽略过期任务结果。')
+            return
         self._results = results
         band: BandStructure = results["band"]
-        dos: DOSResult = results["dos"]
+        dos: Optional[DOSResult] = results["dos"]
         gap = results["gap"]
 
         # 能带页
         self.band_canvas.fig.clf()
         ax = self.band_canvas.fig.add_subplot(111)
-        plot_band_structure(band, ax=ax)
+        title = (f"{band.model_name} — K 谷附近 (|q| ≤ {results['qmax']} Å$^{{-1}}$)"
+                 if results["domain"] == "valley-local" else None)
+        plot_band_structure(band, ax=ax, title=title)
         self.band_canvas.draw_idle()
 
         # DOS 页
-        self.dos_canvas.fig.clf()
-        ax = self.dos_canvas.fig.add_subplot(111)
-        plot_dos(dos, ax=ax)
-        self.dos_canvas.draw_idle()
+        if dos is None:
+            self._show_dos_unavailable(results["dos_reason"])
+        else:
+            self.dos_canvas.fig.clf()
+            ax = self.dos_canvas.fig.add_subplot(111)
+            plot_dos(dos, ax=ax)
+            self.dos_canvas.draw_idle()
 
         # 布里渊区页
         self.bz_canvas.fig.clf()
         ax = self.bz_canvas.fig.add_subplot(111)
-        plot_bz_path(self.model.lattice, results["kpath"], ax=ax)
+        plot_bz_path(results["lattice"], results["kpath"], ax=ax)
         self.bz_canvas.draw_idle()
 
         # 谷物理页 (仅 k·p 模型)
-        if getattr(self.model, "hamiltonian", None) is not None and                 hasattr(self.model, "params"):
-            self.log("计算谷物理 (Berry 曲率/圆二色性)…")
-            from ..analysis.berry import valley_report
-            rep = valley_report(
-                lambda qq: self.model.hamiltonian(qq, +1),
-                lambda qq: self.model.hamiltonian(qq, -1),
-                band_v=1, band_c=3, qmax=0.25, n_grid=41)
+        rep = results.get("valley")
+        if rep is not None:
             self.valley_canvas.fig.clf()
             ax = self.valley_canvas.fig.add_subplot(121)
             om = rep["omega"].T
@@ -374,8 +475,8 @@ class MainWindow(QMainWindow):
             self.valley_canvas.fig.colorbar(im, ax=ax, fraction=0.046)
             ax2 = self.valley_canvas.fig.add_subplot(122)
             dk, dkm = rep["dichroism_K"], rep["dichroism_Kminus"]
-            bars = ax2.bar([0, 1], [dk.f_plus, dkm.f_plus], 0.4,
-                           color="#c0392b", label="σ$^+$")
+            ax2.bar([0, 1], [dk.f_plus, dkm.f_plus], 0.4,
+                    color="#c0392b", label="σ$^+$")
             ax2.bar([0, 1], [dk.f_minus, dkm.f_minus], 0.4,
                     color="#1f4e79", label="σ$^-$")
             ax2.set_xticks([0, 1])
@@ -393,41 +494,58 @@ class MainWindow(QMainWindow):
         def item(name, value):
             return QTreeWidgetItem([name, value])
         self.result_item.takeChildren()
+        scope_label = {"brillouin-zone": "全布里渊区", "valley-local": "K 谷附近", "path": "路径（实验性）"}.get(gap.scope, "未指定")
+        self.result_item.addChild(item("带隙计算域", scope_label))
         if gap.gap is None:
-            self.result_item.addChild(item("带隙", "无（金属/半金属）"))
+            self.result_item.addChild(item("带隙", "零隙" if gap.status == "zero-gap" else "金属/能带重叠"))
         else:
             kind = "直接" if gap.direct else "间接"
             self.result_item.addChild(
                 item("带隙", f"{gap.gap:.3f} eV ({kind}, {gap.cbm_label})"))
-        if self.preset.engine == "tb" and gap.gap:
+        if results.get("path_gap") is not None:
+            path_gap = results["path_gap"]
+            self.result_item.addChild(item("路径带隙", f"{path_gap.raw_gap:.6f} eV"))
+            self.result_item.addChild(item("带边坐标", f"VBM {gap.vbm_k.round(6)} / CBM {gap.cbm_k.round(6)}"))
+            if gap.scope == "brillouin-zone":
+                converged = gap.search_metadata.get("converged", False)
+                self.result_item.addChild(item("网格收敛检查", "通过" if converged else "未通过，请加密搜索"))
+        engine = self.preset.engine if snapshot is None else snapshot.engine
+        reference = self.preset.gap_ref if snapshot is None else snapshot.gap_reference
+        if engine == "tb" and gap.gap:
             try:
                 k0 = gap.cbm_k
-                me = effective_mass(self.model, k0, band=gap.n_valence,
+                result_model = self.model if self.worker is None or snapshot is None else self.worker.model
+                me = effective_mass(result_model, k0, band=gap.n_valence,
                                     direction=(1, 0))
                 self.result_item.addChild(
-                    item("m_e* (≈CBM)", f"{me:.3f} m₀"))
+                    item("m_e* (CBM, 沿 b₁)", f"{me:.3f} m₀"))
             except Exception:  # noqa: BLE001 — 质量仅为附加信息
                 pass
-        if self.preset.gap_ref is not None:
-            ref, tol = self.preset.gap_ref
+        if reference is not None:
+            ref, tol = reference
             ok = gap.gap is not None and abs(gap.gap - ref) <= tol
             self.result_item.addChild(item(
                 "文献参考", f"{ref:.3f} eV {'✓' if ok else '✗ 偏差>容差'}"))
         else:
-            self.result_item.addChild(item("文献参考", self.preset.gap_note))
+            self.result_item.addChild(item("文献参考", self.preset.gap_note if snapshot is None else snapshot.gap_note))
+        if snapshot is not None:
+            self.result_item.addChild(item('任务编号', snapshot.task_id))
+            self.result_item.addChild(item('任务材料', snapshot.material_name))
+        for name, mass in results["effective_masses_m0"].items():
+            self.result_item.addChild(item(name, f"{mass:.3f} m₀"))
         self.tree.expandAll()
 
         self.tabs.setCurrentIndex(1)
         self.progress.setRange(0, 1)
         self.progress.setValue(1)
-        self.run_button.setEnabled(True)
-        self.status_label.setText(f"完成: {self.preset.name}")
+        self._set_busy(False)
+        self.status_label.setText(f"完成: {self.preset.name if snapshot is None else snapshot.material_name}")
         self.log("仿真完成。")
 
     def _on_error(self, msg: str) -> None:
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
-        self.run_button.setEnabled(True)
+        self._set_busy(False)
         self.log(f"[错误] {msg}")
         QMessageBox.critical(self, "仿真失败", msg.splitlines()[0])
 
@@ -462,5 +580,10 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):  # noqa: N802 (Qt 命名)
         if self.worker is not None and self.worker.isRunning():
-            self.worker.wait(2000)
+            self._closing = True
+            self.cancel_simulation()
+            event.ignore()
+            if not self._poll_timer.isActive():
+                self._poll_timer.start(80)
+            return
         super().closeEvent(event)

@@ -9,12 +9,13 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
+import numpy as np
 
 pytest.importorskip("PyQt5.QtWidgets")
 
 from vdw_studio.gui.main_window import MainWindow
 from vdw_studio.gui.workers import SimulationWorker
-from vdw_studio.presets import list_presets
+from vdw_studio.presets import get_preset, list_presets
 
 
 @pytest.fixture(scope="module")
@@ -25,6 +26,46 @@ def app():
 
 
 class TestMainWindow:
+    def test_strained_graphene_button_reports_bz_and_path_separately(self, app, monkeypatch):
+        from PyQt5.QtCore import QEventLoop, QTimer
+        from PyQt5.QtWidgets import QMessageBox
+        errors = []
+        monkeypatch.setattr(QMessageBox, "critical", lambda *args: errors.append(args[-1]))
+        win = MainWindow()
+        win.set_material("graphene")
+        win.strain_x_spin.setValue(2.)
+        win.kpoint_spin.setValue(10)
+        win.mesh_spin.setValue(8)
+        loop, poll, timeout = QEventLoop(), QTimer(), QTimer()
+        timeout.setSingleShot(True)
+        timeout.timeout.connect(loop.quit)
+        poll.timeout.connect(lambda: loop.quit() if win._results or errors else None)
+        try:
+            win.run_button.click()
+            poll.start(20)
+            timeout.start(15000)
+            loop.exec_()
+            assert not errors
+            assert win._results, "GUI did not finish the strained-model calculation"
+            result = win._results
+            assert result["gap"].scope == "brillouin-zone"
+            assert result["gap"].status == "zero-gap"
+            assert result["gap"].raw_gap < 1e-7
+            assert result["path_gap"].gap > .1
+            rows = {win.result_item.child(i).text(0): win.result_item.child(i).text(1)
+                    for i in range(win.result_item.childCount())}
+            assert rows["带隙计算域"] == "全布里渊区"
+            assert rows["带隙"] == "零隙"
+            assert float(rows["路径带隙"].split()[0]) > .1
+            assert rows["网格收敛检查"] == "通过"
+            assert win.run_button.isEnabled()
+        finally:
+            poll.stop()
+            timeout.stop()
+            if win.worker is not None:
+                win.worker.wait(10000)
+            win.close()
+
     def test_create_and_load_default(self, app):
         win = MainWindow()
         assert win.preset.key == "mos2_kp"
@@ -126,3 +167,64 @@ class TestMainWindow:
         assert worker.done and worker.error is None
         assert worker.result["gap"].gap == pytest.approx(3.5, abs=1e-6)
         win.close()
+
+    @pytest.mark.parametrize("key", [k for k in list_presets()
+                                     if get_preset(k).engine == "kp"])
+    def test_kp_button_runs_through_event_loop(self, app, monkeypatch, key):
+        """真实按钮 → worker → 定时轮询 → 图表，覆盖全部局部谷预设。"""
+        from PyQt5.QtCore import QEventLoop, QTimer
+        from PyQt5.QtWidgets import QMessageBox
+        errors = []
+        monkeypatch.setattr(QMessageBox, "critical",
+                            lambda *args: errors.append(args[-1]))
+        win = MainWindow()
+        win.set_material(key)
+        win.kpoint_spin.setValue(10)
+        loop = QEventLoop()
+        poll = QTimer()
+        timeout = QTimer()
+        timeout.setSingleShot(True)
+        timeout.timeout.connect(loop.quit)
+
+        def check_finished():
+            if win._results or errors:
+                loop.quit()
+
+        poll.timeout.connect(check_finished)
+        try:
+            win.run_button.click()
+            assert not win.run_button.isEnabled()
+            assert not win.material_combo.isEnabled()
+            assert not win.run_action.isEnabled()
+            win.set_material("graphene")
+            assert win.preset.key == key
+            poll.start(10)
+            timeout.start(10000)
+            loop.exec_()
+            assert not errors, errors
+            assert win._results, "后台仿真未通过界面轮询完成"
+            assert win.worker.error is None
+            result = win._results
+            assert result["gap"].gap == pytest.approx(
+                win.preset.gap_ref[0], abs=1e-6)
+            assert result["dos"] is None
+            reason = win.dos_canvas.fig.axes[0].texts[0].get_text()
+            assert '全布里渊区' in reason or 'BZ DOS unavailable' in reason
+            assert result["valley"]["omega"].shape == (41, 41)
+            assert np.isfinite(result["valley"]["omega"]).all()
+            band = result["band"]
+            K = np.array([1 / 3, 1 / 3, 0]) @ result["lattice"].reciprocal_matrix
+            assert np.linalg.norm(band.kpoints - K, axis=1).max() <= 0.25 + 1e-12
+            assert band.energies.shape == (21, 4)
+            labels = [t.get_text() for t in
+                      win.band_canvas.fig.axes[0].get_xticklabels()]
+            assert labels == band.tick_labels
+            assert win.run_button.isEnabled() and win.material_combo.isEnabled()
+            assert not win.sigma_spin.isEnabled()
+            assert not win._poll_timer.isActive()
+        finally:
+            poll.stop()
+            timeout.stop()
+            if win.worker is not None:
+                win.worker.wait(10000)
+            win.close()
