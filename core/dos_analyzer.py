@@ -1,218 +1,254 @@
-import numpy as np
-from typing import Optional, Tuple
+"""Normalized k-point spectra and VASP DOSCAR total DOS."""
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional, Tuple
+
+import numpy as np
+
+from .parser import _float
 
 
 @dataclass
 class DosData:
-    """态密度数据结构"""
-    energies: np.ndarray       # 能量网格 (ne,)
-    total_dos: np.ndarray      # 总态密度 (ne,)
-    vb_dos: Optional[np.ndarray] = None   # 价带态密度 (ne,)
-    cb_dos: Optional[np.ndarray] = None   # 导带态密度 (ne,)
+    energies: np.ndarray
+    total_dos: np.ndarray
+    vb_dos: Optional[np.ndarray] = None
+    cb_dos: Optional[np.ndarray] = None
     fermi_level: float = 0.0
     energy_range: Tuple[float, float] = (-10.0, 10.0)
-    sigma: float = 0.05        # 高斯展宽宽度 (eV)
+    sigma: float = 0.05
+    scope: str = "sampled-spectrum"
+    source: str = "eigenvalues"
+    state_capacity: Optional[float] = 1.0
+    expected_states: Optional[float] = None
+    normalized_weights: Optional[np.ndarray] = None
+    component_labels: tuple = ("E ≤ EF states", "E > EF states")
+    note: str = ""
+    spin_dos: Optional[np.ndarray] = None
+    integrated_dos: Optional[np.ndarray] = None
+
+    @property
+    def integral(self) -> float:
+        return float(np.trapezoid(self.total_dos, self.energies))
+
+
+def _positive(value, name):
+    if not np.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be finite and positive")
 
 
 class DosAnalyzer:
-    """态密度分析工具：从能带数据（EIGENVAL）计算 DOS"""
+    """Gaussian spectra; only a declared integration mesh is a BZ DOS.
 
-    def __init__(self, energies: np.ndarray, fermi_level: float = 0.0):
-        """
-        参数:
-            energies: (nk, nbands) 能带能量数组
-            fermi_level: 费米能级 (eV)
-        """
-        self.energies = energies
-        self.fermi_level = fermi_level
-        self._dos_data: Optional[DosData] = None
-
-    def set_fermi_level(self, efermi: float):
-        """设置费米能级并清除缓存"""
-        self.fermi_level = efermi
+    Array callers default to one state per column. from_band_data uses VASP's
+    spin capacity (2 for ISPIN=1, 1 for ISPIN=2); SOC callers must specify 1.
+    All three components use exactly the same normalized k-point weights.
+    """
+    def __init__(self, energies, fermi_level=0.0, *, weights=None,
+                 state_capacity=1.0, occupied_fraction=None,
+                 scope="sampled-spectrum", note="", max_workspace_mb=32., cancel_check=None):
+        self.energies = np.asarray(energies, dtype=float)
+        if self.energies.ndim != 2 or min(self.energies.shape) < 1 or not np.isfinite(self.energies).all():
+            raise ValueError("energies must be a nonempty finite (nk, bands) array")
+        if not np.isfinite(fermi_level):
+            raise ValueError("fermi_level must be finite")
+        if state_capacity not in (1., 2.):
+            raise ValueError("state_capacity must be 1 or 2")
+        if scope not in ("sampled-spectrum", "path-spectrum", "brillouin-zone"):
+            raise ValueError("invalid DOS scope")
+        _positive(max_workspace_mb, 'max_workspace_mb')
+        self.fermi_level = float(fermi_level)
+        self.state_capacity = float(state_capacity)
+        self.weights = weights
+        self.scope, self.note = scope, note
+        self.max_workspace_mb = max_workspace_mb
+        self.cancel_check = cancel_check
+        self.occupied_fraction = None
+        if occupied_fraction is not None:
+            fraction = np.asarray(occupied_fraction, dtype=float)
+            if (fraction.shape != self.energies.shape or not np.isfinite(fraction).all() or
+                    np.any(fraction < -1e-3) or np.any(fraction > 1 + 1e-3)):
+                raise ValueError("occupation fractions must match energies and lie in [0, 1]")
+            self.occupied_fraction = np.clip(fraction, 0., 1.)
         self._dos_data = None
 
-    def calculate_dos(
-        self,
-        energy_range: Tuple[float, float] = (-10.0, 10.0),
-        num_points: int = 1000,
-        sigma: float = 0.05,
-        per_kpoint_weight: Optional[np.ndarray] = None
-    ) -> DosData:
-        """
-        使用高斯展宽从能带数据计算态密度。
+    @classmethod
+    def from_band_data(cls, data, fermi_level=0., *, state_capacity=None, **kwargs):
+        capacity = (2. if data.ispin == 1 else 1.) if state_capacity is None else state_capacity
+        kind = getattr(data, 'sampling_kind', 'unknown')
+        scope = 'brillouin-zone' if kind == 'mesh' else 'path-spectrum' if kind == 'path' else 'sampled-spectrum'
+        weights = data.weights
+        note = ''
+        if weights is not None and np.all(np.asarray(weights) == 0):
+            if scope == 'brillouin-zone':
+                raise ValueError('Integration mesh has no positive k-point weights')
+            weights = None
+            note = 'All input k weights are zero; uniform normalized spectrum, not a BZ DOS'
+        fraction = None if data.occupations is None else data.occupations / capacity
+        if fraction is not None and np.isfinite(fraction).all() and (np.any(fraction < -1e-3) or np.any(fraction > 1 + 1e-3)):
+            fraction = None
+            note += '; Occupations outside state capacity: components split by energy, not occupancy'
+        return cls(data.energies, fermi_level, weights=weights, state_capacity=capacity,
+                   occupied_fraction=fraction, scope=scope, note=note, **kwargs)
 
-        参数:
-            energy_range: 能量范围 (eV，相对于费米能级)
-            num_points: 能量网格点数
-            sigma: 高斯展宽标准差 (eV)
-            per_kpoint_weight: 每个 k 点的权重，None 则均匀权重
-        """
-        e_min, e_max = energy_range
-        energy_grid = np.linspace(e_min, e_max, num_points)
+    def set_fermi_level(self, efermi):
+        if not np.isfinite(efermi):
+            raise ValueError('fermi_level must be finite')
+        self.fermi_level = float(efermi)
+        self._dos_data = None
 
-        # 所有能带能量展平
-        all_energies = self.energies.flatten() - self.fermi_level
-
-        if per_kpoint_weight is not None:
-            # 每个 k 点有不同权重（例如 k 点积分权重）
-            weights = np.repeat(per_kpoint_weight, self.energies.shape[1])
-            total_dos = self._gaussian_broadening(
-                all_energies, energy_grid, sigma, weights
-            )
+    def calculate_dos(self, energy_range=(-10., 10.), num_points=1000, sigma=.05,
+                      per_kpoint_weight=None) -> DosData:
+        if self.cancel_check is not None:
+            self.cancel_check()
+        _positive(sigma, 'sigma')
+        bounds = np.asarray(energy_range, dtype=float)
+        if bounds.shape != (2,) or not np.isfinite(bounds).all() or bounds[0] >= bounds[1]:
+            raise ValueError('energy_range must contain finite increasing bounds')
+        if isinstance(num_points, bool) or not isinstance(num_points, (int, np.integer)) or num_points < 2:
+            raise ValueError('num_points must be an integer >= 2')
+        weights = self.weights if per_kpoint_weight is None else per_kpoint_weight
+        nk, nb = self.energies.shape
+        if weights is None:
+            weights = np.full(nk, 1. / nk)
         else:
-            total_dos = self._gaussian_broadening(all_energies, energy_grid, sigma)
-
-        # 分别计算价带和导带 DOS
-        vb_mask = all_energies <= 0
-        cb_mask = all_energies > 0
-
-        vb_dos = self._gaussian_broadening(
-            all_energies[vb_mask], energy_grid, sigma
-        ) if np.any(vb_mask) else np.zeros_like(energy_grid)
-
-        cb_dos = self._gaussian_broadening(
-            all_energies[cb_mask], energy_grid, sigma
-        ) if np.any(cb_mask) else np.zeros_like(energy_grid)
-
-        # 归一化：让总 DOS 的积分大致合理
-        # 对于离散 k 点采样，需要乘以 k 点权重因子
-        # 这里做简单归一化：总态密度峰值归一到合理范围
-        if np.max(total_dos) > 0:
-            # 保持原始比例，仅做数值稳定性处理
-            total_dos = np.where(total_dos < 1e-10, 0, total_dos)
-
-        self._dos_data = DosData(
-            energies=energy_grid,
-            total_dos=total_dos,
-            vb_dos=vb_dos,
-            cb_dos=cb_dos,
-            fermi_level=self.fermi_level,
-            energy_range=energy_range,
-            sigma=sigma
-        )
+            weights = np.asarray(weights, dtype=float)
+            if (weights.shape != (nk,) or not np.isfinite(weights).all() or
+                    np.any(weights < 0) or not np.any(weights > 0)):
+                raise ValueError('weights must be finite nonnegative k weights with positive sum')
+            weights = weights / np.max(weights)  # avoid overflow for large raw weights
+            weights = weights / weights.sum()
+        grid = np.linspace(*bounds, num_points)
+        values = (self.energies - self.fermi_level).ravel()
+        state_weights = np.repeat(weights * self.state_capacity, nb)
+        fraction = ((values <= 0).astype(float) if self.occupied_fraction is None
+                    else self.occupied_fraction.ravel())
+        total, occupied = np.zeros(num_points), np.zeros(num_points)
+        # One in-place Gaussian block, bounded independently of nk*nb.
+        chunk = max(1, int(self.max_workspace_mb * 1024 ** 2 / (8 * num_points)))
+        workspace = np.empty((num_points, min(chunk, len(values))))
+        for start in range(0, len(values), chunk):
+            if self.cancel_check is not None:
+                self.cancel_check()
+            end = min(start + chunk, len(values))
+            gaussian = workspace[:, :end - start]
+            np.subtract(grid[:, None], values[None, start:end], out=gaussian)
+            gaussian /= sigma
+            np.square(gaussian, out=gaussian)
+            gaussian *= -.5
+            np.exp(gaussian, out=gaussian)
+            gaussian /= sigma * np.sqrt(2 * np.pi)
+            w = state_weights[start:end]
+            total += gaussian @ w
+            occupied += gaussian @ (w * fraction[start:end])
+        unoccupied = np.maximum(0., total - occupied)
+        labels = ('Occupied states', 'Unoccupied states') if self.occupied_fraction is not None else ('E ≤ EF states', 'E > EF states')
+        self._dos_data = DosData(grid, total, occupied, unoccupied, self.fermi_level,
+                                 tuple(map(float, bounds)), float(sigma), self.scope,
+                                 state_capacity=self.state_capacity, expected_states=nb * self.state_capacity,
+                                 normalized_weights=weights.copy(), component_labels=labels, note=self.note)
         return self._dos_data
 
-    @staticmethod
-    def _gaussian_broadening(
-        eigenvalues: np.ndarray,
-        energy_grid: np.ndarray,
-        sigma: float,
-        weights: Optional[np.ndarray] = None
-    ) -> np.ndarray:
-        """
-        高斯展宽计算态密度。
-
-        DOS(E) = Σ_i w_i * exp(-(E - ε_i)² / (2σ²)) / (σ * √(2π))
-        """
-        if weights is None:
-            weights = np.ones_like(eigenvalues)
-
-        # 向量化计算： (ne, 1) - (1, nb) -> (ne, nb)
-        diff = energy_grid[:, np.newaxis] - eigenvalues[np.newaxis, :]
-        gauss = np.exp(-0.5 * (diff / sigma) ** 2) / (sigma * np.sqrt(2.0 * np.pi))
-        dos = np.sum(gauss * weights[np.newaxis, :], axis=1)
-        return dos
-
-    def get_dos_at_fermi(self) -> float:
-        """获取费米能级处的态密度"""
+    def get_dos_at_fermi(self):
         if self._dos_data is None:
             self.calculate_dos()
-        # 在能量网格中找到最接近 0 的点
-        idx = np.argmin(np.abs(self._dos_data.energies))
-        return float(self._dos_data.total_dos[idx])
+        return float(np.interp(0., self._dos_data.energies, self._dos_data.total_dos))
 
-    def get_band_edges_from_dos(
-        self,
-        threshold: float = 0.01
-    ) -> dict:
-        """
-        从 DOS 推断带边位置。
-        价带顶 = DOS 从 0 开始显著上升的最后一个能量点（<0）
-        导带底 = DOS 从 0 开始显著上升的第一个能量点（>0）
-        """
+    def get_band_edges_from_dos(self, threshold=.01):
+        """Smearing-dependent visualization heuristic, not a material gap."""
+        if not np.isfinite(threshold) or not 0 < threshold < 1:
+            raise ValueError('threshold must lie in (0, 1)')
         if self._dos_data is None:
             self.calculate_dos()
-
-        energies = self._dos_data.energies
-        dos = self._dos_data.total_dos
-
-        # 找到 DOS 超过阈值的区域
-        mask = dos > threshold * np.max(dos)
-
-        vb_indices = np.where(mask & (energies <= 0))[0]
-        cb_indices = np.where(mask & (energies > 0))[0]
-
-        vbm = float(energies[vb_indices[-1]]) if len(vb_indices) > 0 else None
-        cbm = float(energies[cb_indices[0]]) if len(cb_indices) > 0 else None
-        gap = round(cbm - vbm, 4) if (vbm is not None and cbm is not None) else None
-
-        return {
-            'vbm': vbm,
-            'cbm': cbm,
-            'gap': gap
-        }
+        data = self._dos_data
+        mask = data.total_dos > threshold * np.max(data.total_dos)
+        vb = np.flatnonzero(mask & (data.energies <= 0))
+        cb = np.flatnonzero(mask & (data.energies > 0))
+        vbm = float(data.energies[vb[-1]]) if len(vb) else None
+        cbm = float(data.energies[cb[0]]) if len(cb) else None
+        return {'vbm': vbm, 'cbm': cbm, 'gap': None if vbm is None or cbm is None else cbm-vbm,
+                'scope': 'broadened-spectrum', 'note': 'Threshold heuristic depends on sigma and energy grid'}
 
 
 class DoscarParser:
-    """解析 VASP DOSCAR 文件"""
+    """Strict total DOSCAR reader (3/5 columns); projected blocks are ignored.
 
-    def __init__(self, filepath: str):
+    Header order is EMAX EMIN NEDOS EFERMI. Already-normalized VASP total DOS
+    includes its spin count and must not be multiplied by two again.
+    """
+    def __init__(self, filepath, cancel_check=None):
         self.filepath = Path(filepath)
+        self.cancel_check = cancel_check
 
-    def parse(self) -> Optional[DosData]:
-        """解析 DOSCAR 文件，返回总态密度数据"""
+    def parse(self):
+        if self.cancel_check is not None:
+            self.cancel_check()
         if not self.filepath.exists():
             return None
+        def error(line, message):
+            return ValueError(f'{self.filepath}:{line}: {message}')
+        with self.filepath.open(encoding='utf-8-sig') as stream:
+            header = [stream.readline() for _ in range(6)]
+            if any(not v.strip() for v in header):
+                raise error(6, 'incomplete DOSCAR header')
+            try:
+                fields = header[5].split()
+                if len(fields) != 5:
+                    raise ValueError()
+                emax, emin, nedos, ef, weight = _float(fields[0]), _float(fields[1]), int(fields[2]), _float(fields[3]), _float(fields[4])
+            except (ValueError, IndexError) as exc:
+                raise error(6, 'expected EMAX EMIN integer NEDOS EFERMI weight') from exc
+            if not np.isfinite([emax, emin, ef, weight]).all() or emin >= emax or nedos < 2:
+                raise error(6, 'invalid DOSCAR energy range or NEDOS')
+            rows, columns = [], None
+            for i in range(nedos):
+                if self.cancel_check is not None:
+                    self.cancel_check()
+                fields = stream.readline().split()
+                if len(fields) not in (3, 5) or (columns is not None and len(fields) != columns):
+                    raise error(i+7, 'expected a complete 3/5-column total DOS row')
+                columns = len(fields)
+                try:
+                    row = [_float(v) for v in fields]
+                except ValueError as exc:
+                    raise error(i+7, 'invalid DOS value') from exc
+                if not np.isfinite(row).all():
+                    raise error(i+7, 'DOS values must be finite')
+                rows.append(row)
+        rows = np.asarray(rows)
+        energy = rows[:, 0]
+        if np.any(np.diff(energy) <= 0) or not np.allclose(energy[[0, -1]], [emin, emax], atol=1e-5, rtol=1e-6):
+            raise error(7, 'DOS energy grid must increase and match header bounds')
+        spin = rows[:, 1:3].copy() if columns == 5 else None
+        total = spin.sum(axis=1) if spin is not None else rows[:, 1].copy()
+        integrated = rows[:, 3:5].sum(axis=1) if spin is not None else rows[:, 2].copy()
+        relative = energy - ef
+        return DosData(relative, total, np.where(relative <= 0, total, 0.),
+                       np.where(relative > 0, total, 0.), ef,
+                       (float(relative[0]), float(relative[-1])), 0., 'brillouin-zone',
+                       source=str(self.filepath.resolve()), state_capacity=None,
+                       component_labels=('E ≤ EF', 'E > EF'), spin_dos=spin,
+                       integrated_dos=integrated,
+                       note='Imported VASP DOSCAR total DOS; projected blocks are not read')
 
-        with open(self.filepath, 'r') as f:
-            lines = f.readlines()
 
-        if len(lines) < 6:
-            return None
+def load_spectrum(data, eigenval_path, *, fermi_level=0., energy_range=(-5., 5.),
+                  num_points=800, sigma=.05, state_capacity=None, cancel_check=None):
+    """Prefer a same-directory DOSCAR; otherwise broaden declared k samples.
 
-        # DOSCAR 第 6 行：EMIN, EMAX, NEDOS, EFERMI, weight
-        try:
-            header = lines[5].strip().split()
-            emin = float(header[0])
-            emax = float(header[1])
-            nedos = int(header[2])
-            efermi = float(header[3])
-        except (ValueError, IndexError):
-            return None
-
-        # 第 7 行开始是总 DOS 数据
-        data_start = 6
-        energies = []
-        total_dos = []
-
-        for i in range(data_start, min(data_start + nedos, len(lines))):
-            parts = lines[i].strip().split()
-            if len(parts) >= 2:
-                energies.append(float(parts[0]))
-                total_dos.append(float(parts[1]))
-
-        if len(energies) == 0:
-            return None
-
-        energies = np.array(energies) - efermi  # 对齐到费米能级
-        total_dos = np.array(total_dos)
-
-        # 分离价带和导带
-        vb_mask = energies <= 0
-        cb_mask = energies > 0
-
-        vb_dos = np.where(vb_mask, total_dos, 0)
-        cb_dos = np.where(cb_mask, total_dos, 0)
-
-        return DosData(
-            energies=energies,
-            total_dos=total_dos,
-            vb_dos=vb_dos,
-            cb_dos=cb_dos,
-            fermi_level=efermi,
-            energy_range=(float(np.min(energies)), float(np.max(energies))),
-            sigma=0.0  # DOSCAR 已是展宽后的结果
-        )
+    The UI's energy reference is absolute in EIGENVAL/DOSCAR units. Imported
+    DOSCAR preserves its own EF metadata while shifting its energy axis to the
+    requested display zero. No re-broadening of already-integrated DOSCAR.
+    """
+    doscar = DoscarParser(Path(eigenval_path).parent / 'DOSCAR', cancel_check).parse() if eigenval_path else None
+    if doscar is None:
+        return DosAnalyzer.from_band_data(data, fermi_level, state_capacity=state_capacity, cancel_check=cancel_check).calculate_dos(
+            energy_range, num_points, sigma)
+    absolute = doscar.energies + doscar.fermi_level
+    doscar.energies = absolute - fermi_level
+    doscar.vb_dos = np.where(doscar.energies <= 0, doscar.total_dos, 0.)
+    doscar.cb_dos = np.where(doscar.energies > 0, doscar.total_dos, 0.)
+    doscar.energy_range = (float(doscar.energies[0]), float(doscar.energies[-1]))
+    doscar.note += f'; file EF={doscar.fermi_level:g} eV; display zero={fermi_level:g} eV'
+    doscar.fermi_level = float(fermi_level)
+    return doscar
