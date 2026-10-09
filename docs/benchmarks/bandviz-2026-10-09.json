@@ -1,0 +1,71 @@
+{
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "numpy": "2.5.1",
+  "memory_metric": "tracemalloc peak, includes NumPy arrays; excludes Qt/OS/native allocations",
+  "baseline": "Same validated parser with the entire decoded text resident in StringIO; not the historical parser",
+  "energy_points": 401,
+  "dos_workspace_MiB": 4.0,
+  "cases": [
+    {
+      "name": "small",
+      "nk": 64,
+      "bands": 8,
+      "file_MiB": 0.012360572814941406,
+      "output_arrays_MiB": 0.01025390625,
+      "streaming": {
+        "seconds": 0.0242115000000922,
+        "peak_traced_MiB": 0.0417938232421875
+      },
+      "full_text_reference": {
+        "seconds": 0.02670349999971222,
+        "peak_traced_MiB": 0.0702810287475586
+      },
+      "dos": {
+        "seconds": 0.004939400008879602,
+        "peak_traced_MiB": 1.7172012329101562
+      },
+      "dos_integral": 16.0
+    },
+    {
+      "name": "medium",
+      "nk": 1024,
+      "bands": 32,
+      "file_MiB": 0.699772834777832,
+      "output_arrays_MiB": 0.5390625,
+      "streaming": {
+        "seconds": 1.2915001000073971,
+        "peak_traced_MiB": 0.5970096588134766
+      },
+      "full_text_reference": {
+        "seconds": 1.0897885000013048,
+        "peak_traced_MiB": 3.8660945892333984
+      },
+      "dos": {
+        "seconds": 0.11940749999484979,
+        "peak_traced_MiB": 4.956317901611328
+      },
+      "dos_integral": 64.0
+    },
+    {
+      "name": "large",
+      "nk": 4096,
+      "bands": 64,
+      "file_MiB": 5.486393928527832,
+      "output_arrays_MiB": 4.15625,
+      "streaming": {
+        "seconds": 7.4956778999912785,
+        "peak_traced_MiB": 4.377751350402832
+      },
+      "full_text_reference": {
+        "seconds": 7.472367099995608,
+        "peak_traced_MiB": 30.2699031829834
+      },
+      "dos": {
+        "seconds": 0.9763971000065794,
+        "peak_traced_MiB": 10.229930877685547
+      },
+      "dos_integral": 128.00000000000003
+    }
+  ]
+}
