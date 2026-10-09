@@ -31,7 +31,7 @@
 3. **Zahid, Liu, Zhu, Wang, Guo 2013（MoS₂ sp³d⁵ 非正交 Slater-Koster TB）**
    F. Zahid, L. Liu, Y. Zhu, J. Wang, H. Guo,
    "A generic tight-binding model for monolayer, bilayer and bulk MoS₂",
-   *Phys. Rev. B* **87**, 125302 (2013).
+   *AIP Advances* **3**, 052111 (2013), [doi:10.1063/1.4804936](https://doi.org/10.1063/1.4804936).
    arXiv: [1304.0074](https://arxiv.org/abs/1304.0074)（源码：`papers/arxiv/zahid2013/`）
    - 用途：sp³d⁵ Slater-Koster 模型的 96 个参数（Table 3：on-site E_s/E_p/E_d、
      λ_SO、Slater-Koster 能量积分 V_…、重叠积分 S_…）。
@@ -86,8 +86,8 @@
 
 8. **Bistritzer & MacDonald 2011（转角双层石墨烯连续模型）**
    R. Bistritzer, A. H. MacDonald,
-   "Moiré bands and twisted Wannier states",
-   *Phys. Rev. B* **84**, 035440 (2011).
+   "Moiré bands in twisted double-layer graphene",
+   *PNAS* **108** (30), 12233–12237 (2011), [doi:10.1073/pnas.1108174108](https://doi.org/10.1073/pnas.1108174108).
    arXiv: [1009.4203](https://arxiv.org/abs/1009.4203)（源码：`papers/arxiv/bistritzer2011/`）
    - 用途：`engine/moire.py` 全部模型要素：单层 Dirac 块 h_k(θ)（Eq. 1）、
      层间隧穿 T(r) = wΣe^{−iq_j·r}T_j 与 T₁/T₂/T₃ 矩阵（Eq. 2–5，w=110 meV）、

@@ -13,7 +13,7 @@
   第一壳层解析曲线 (1−3α²)/(1+6α²)，第一魔角 α₁≈1/√3；
 - 平带带宽与 moiré 周期报告。
 
-模型：Bistritzer & MacDonald, Phys. Rev. B 84, 035440 (2011)；
+模型：Bistritzer & MacDonald, PNAS 108, 12233–12237 (2011)；
 参数 w = 110 meV（AB 堆叠标定）、ħv = (√3/2)|t|a₀ = 5.755 eV·Å
 （Reich 2002，与 HoneycombModel 一致）。
 """

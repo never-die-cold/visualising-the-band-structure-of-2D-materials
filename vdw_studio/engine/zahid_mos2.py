@@ -1,6 +1,6 @@
 """MoS₂ sp³d⁵ 非正交 Slater-Koster 紧束缚模型（Zahid et al. 2013）。
 
-实现 Zahid, Liu, Zhu, Wang, Guo, Phys. Rev. B **87**, 125302 (2013)
+实现 Zahid, Liu, Zhu, Wang, Guo, AIP Advances **3**, 052111 (2013)
 的 96 参数模型：sp³d⁵ 非正交基、最近邻、Slater-Koster 两点积分 +
 on-site 自旋轨道（arXiv:1304.0074 Table 3，参数逐一转录）。
 
