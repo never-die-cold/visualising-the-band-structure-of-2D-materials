@@ -46,31 +46,48 @@ class BandStructureWidget(QWidget):
         kdist = self.band_data.kdistances
         energies = self.band_data.energies - self.fermi_level
         
-        # 绘制能带
+        # Draw each segment separately so discontinuous paths are not joined.
+        segments = self.band_data.segments or [(0, len(kdist) - 1)]
         for ib in range(self.band_data.num_bands):
-            self.ax.plot(kdist, energies[:, ib], 
-                        color='blue', linewidth=1.2, alpha=0.8)
+            spin = ib // self.band_data.nbands
+            for segment_index, (start, end) in enumerate(segments):
+                label = None
+                if self.band_data.ispin == 2 and ib % self.band_data.nbands == 0 and segment_index == 0:
+                    label = 'Spin up' if spin == 0 else 'Spin down'
+                self.ax.plot(kdist[start:end + 1], energies[start:end + 1, ib],
+                             color='blue' if spin == 0 else 'darkorange',
+                             linewidth=1.2, alpha=0.8, label=label,
+                             marker='.' if start == end else None)
         
         # 费米能级线
         if self.show_fermi:
             self.ax.axhline(y=0, color='red', linestyle='--', 
                           linewidth=1.0, label='Fermi Level')
         
-        # 高对称点虚线
+        # Merge coincident ticks (e.g. X at a shared end, or X|M at a jump).
+        ticks, labels = [], []
         for idx, label in self.band_data.kpoint_labels:
-            self.ax.axvline(x=kdist[idx], color='gray', 
-                          linestyle=':', linewidth=0.8, alpha=0.5)
-        
-        # 设置标签
-        if self.band_data.kpoint_labels:
-            ticks = [kdist[idx] for idx, _ in self.band_data.kpoint_labels]
-            labels = [label for _, label in self.band_data.kpoint_labels]
+            position = kdist[idx]
+            if ticks and np.isclose(position, ticks[-1], atol=1e-10, rtol=0):
+                if label not in labels[-1].split('|'):
+                    labels[-1] += '|' + label
+            else:
+                ticks.append(position)
+                labels.append(label)
+                self.ax.axvline(x=position, color='gray',
+                               linestyle=':', linewidth=0.8, alpha=0.5)
+        if ticks:
             self.ax.set_xticks(ticks)
             self.ax.set_xticklabels(labels, fontsize=11)
         
-        self.ax.set_xlim(kdist[0], kdist[-1])
+        if kdist[-1] > kdist[0]:
+            self.ax.set_xlim(kdist[0], kdist[-1])
+        else:
+            self.ax.set_xlim(kdist[0] - 0.5, kdist[0] + 0.5)
         self.ax.set_ylim(self.energy_range[0], self.energy_range[1])
-        self.ax.set_xlabel('k-path', fontsize=12)
+        axis_label = ('k-path (Å$^{-1}$)' if self.band_data.lattice_matrix is not None
+                      else 'k-path (fractional; lattice unavailable)')
+        self.ax.set_xlabel(axis_label, fontsize=12)
         self.ax.set_ylabel('Energy (eV)', fontsize=12)
         self.ax.set_title('Band Structure', fontsize=14, fontweight='bold')
         self.ax.grid(True, alpha=0.3)
@@ -78,15 +95,16 @@ class BandStructureWidget(QWidget):
         # 添加带隙标注
         if self.analyzer:
             gap_info = self.analyzer.get_band_gap()
-            if gap_info['gap'] is not None:
-                text = f"Eg = {gap_info['gap']} eV"
-                if gap_info['direct']:
-                    text += " (direct)"
-                else:
-                    text += " (indirect)"
-                self.ax.text(0.02, 0.98, text, transform=self.ax.transAxes,
-                           fontsize=10, verticalalignment='top',
-                           bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+            status = gap_info.get('status', 'unknown')
+            if status == 'insulator':
+                kind = 'direct' if gap_info['direct'] else 'indirect'
+                text = f"Sampled Eg = {gap_info['gap']:.6g} eV ({kind})"
+            else:
+                state = {'metal': 'metal', 'zero-gap': 'zero gap', 'unknown': 'undetermined'}[status]
+                text = f"Sampled k points: {state}"
+            self.ax.text(0.02, 0.98, text, transform=self.ax.transAxes,
+                         fontsize=10, verticalalignment='top',
+                         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
         
         self.ax.legend()
         self.canvas.draw()
