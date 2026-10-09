@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 from ..engine.solver import BandStructure
+from .fonts import plot_text
 
 
 def plot_band_structure(bs: BandStructure,
@@ -55,7 +56,8 @@ def plot_band_structure(bs: BandStructure,
         center = (energies.max() + energies.min()) / 2
         ax.set_ylim(center - 0.6 * span, center + 0.6 * span)
     ax.set_ylabel("E − E$_F$ (eV)")
-    ax.set_title(title or f"Band structure — {bs.model_name}")
+    fallback = f"Band structure — {bs.model_name}"
+    ax.set_title(plot_text(title or fallback, fallback))
     if created:
         fig.tight_layout()
     return fig, ax

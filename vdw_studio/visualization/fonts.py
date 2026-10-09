@@ -9,6 +9,7 @@ Windows（微软雅黑/黑体）与 Linux（Noto/WenQuanYi）常见中文字体�
 from __future__ import annotations
 
 import matplotlib
+import re
 from matplotlib import font_manager
 
 _CJK_FONTS = [
@@ -33,8 +34,16 @@ def setup_cjk_fonts() -> bool:
     found = [f for f in _CJK_FONTS if f in installed]
     if not found:
         return False
-    matplotlib.rcParams["font.sans-serif"] = found + \
-        matplotlib.rcParams["font.sans-serif"]
+    matplotlib.rcParams["font.sans-serif"] = list(dict.fromkeys(found +
+        matplotlib.rcParams["font.sans-serif"]))
     matplotlib.rcParams["font.family"] = "sans-serif"
     matplotlib.rcParams["axes.unicode_minus"] = False
     return True
+
+
+def plot_text(text, fallback):
+    """Keep requested CJK text only with an available font; otherwise use English."""
+    unsupported = r'[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]'
+    if not re.search(unsupported, text) or setup_cjk_fonts():
+        return text
+    return re.sub(unsupported, '', fallback).strip()

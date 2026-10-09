@@ -8,6 +8,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from ..engine.solver import DOSResult
+from .fonts import plot_text
 
 
 def plot_dos(dos: DOSResult,
@@ -35,10 +36,10 @@ def plot_dos(dos: DOSResult,
     ax.set_xlabel("DOS (states/eV/cell)")
     ax.set_ylabel("E − E$_F$ (eV)")
     integral = float(np.trapezoid(dos.dos, dos.energies))
-    ax.set_title(title or f"DOS — {dos.model_name}\n"
+    fallback = (f"DOS — {dos.model_name}\n"
                           f"(mesh {dos.mesh[0]}×{dos.mesh[1]}, "
-                          f"σ={dos.sigma} eV, N={integral:.1f})",
-                 fontsize=10)
+                          f"σ={dos.sigma} eV, N={integral:.1f})")
+    ax.set_title(plot_text(title or fallback, fallback), fontsize=10)
     if created:
         fig.tight_layout()
     return fig, ax

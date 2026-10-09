@@ -106,7 +106,8 @@ def plot_structure(crystal: Crystal,
     ax.set_axis_off()
     ax.view_init(elev=elev, azim=azim)
     if title:
-        ax.set_title(title)
+        from .fonts import plot_text
+        ax.set_title(plot_text(title, f'Structure — {crystal.formula_str}'))
     if created_fig:
         ax.legend(loc="upper right", frameon=False, fontsize=9)
     return fig, ax

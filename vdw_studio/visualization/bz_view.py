@@ -15,6 +15,7 @@ from matplotlib.patches import Polygon as MplPolygon
 
 from ..engine.kpath import DISPLAY_SYMBOLS, KPath
 from ..structure.lattice import Lattice
+from .fonts import plot_text
 
 
 def brillouin_zone_polygon(lattice: Lattice) -> np.ndarray:
@@ -111,7 +112,7 @@ def plot_bz_path(lattice: Lattice,
                         solid_capstyle="round")
     ax.set_aspect("equal")
     ax.set_axis_off()
-    ax.set_title(title or "Brillouin zone & k-path", fontsize=11)
+    ax.set_title(plot_text(title or "Brillouin zone & k-path", "Brillouin zone & k-path"), fontsize=11)
     pad = 0.35 * max(np.linalg.norm(B[0]), np.linalg.norm(B[1]))
     lim = float(np.abs(poly).max() + pad)
     ax.set_xlim(-lim, lim)
