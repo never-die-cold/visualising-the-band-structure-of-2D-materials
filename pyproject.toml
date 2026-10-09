@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "band-structure-2d"
+version = "0.1.0"
+description = "BandViz VASP viewer and vdW Studio two-dimensional material simulator"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "PyQt5==5.15.11",
+    "matplotlib==3.11.0",
+    "numpy==2.5.1",
+    "scipy==1.18.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest==9.1.1"]
+
+[project.scripts]
+bandviz = "main:main"
+vdw-studio = "vdw_studio.gui.__main__:main"
+vdw-studio-cli = "vdw_studio.cli:main"
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*", "gui*", "storage*", "utils*", "vdw_studio*"]
+exclude = ["tests*", "papers*", "examples*"]
