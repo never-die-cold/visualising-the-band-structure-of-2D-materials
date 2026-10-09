@@ -61,21 +61,19 @@ class DosWidget(QWidget):
         if self.show_vb and vb_plot is not None:
             self.ax.fill_betweenx(
                 e_plot, 0, vb_plot,
-                where=(e_plot <= 0),
-                color='steelblue', alpha=0.4, label='VB DOS'
+                color='steelblue', alpha=0.4, label=self.dos_data.component_labels[0]
             )
 
         # 绘制导带 DOS（红色填充）
         if self.show_cb and cb_plot is not None:
             self.ax.fill_betweenx(
                 e_plot, 0, cb_plot,
-                where=(e_plot > 0),
-                color='firebrick', alpha=0.4, label='CB DOS'
+                color='firebrick', alpha=0.4, label=self.dos_data.component_labels[1]
             )
 
         # 绘制总 DOS（黑色实线）
         if self.show_total:
-            self.ax.plot(t_plot, e_plot, color='black', linewidth=1.2, label='Total DOS')
+            self.ax.plot(t_plot, e_plot, color='black', linewidth=1.2, label='Total')
 
         # 费米能级参考线
         self.ax.axhline(y=0, color='red', linestyle='--', linewidth=1.0, label='Fermi Level')
@@ -83,8 +81,12 @@ class DosWidget(QWidget):
         # 坐标轴设置（DOS 图：横轴为 DOS，纵轴为能量）
         self.ax.set_ylim(emin, emax)
         self.ax.set_ylabel('Energy (eV)', fontsize=11)
-        self.ax.set_xlabel('DOS (a.u.)', fontsize=11)
-        self.ax.set_title('Density of States', fontsize=13, fontweight='bold')
+        physical = self.dos_data.scope == 'brillouin-zone'
+        self.ax.set_xlabel('DOS (states/eV/cell)' if physical else 'Spectrum (states/eV)', fontsize=11)
+        self.ax.set_title('Density of States' if physical else 'K-point spectrum (not BZ DOS)', fontsize=13, fontweight='bold')
+        self.ax.text(.02, .98, f"σ={self.dos_data.sigma:g} eV; window N={self.dos_data.integral:.4g}",
+                     transform=self.ax.transAxes, va='top', fontsize=8)
+        self.setToolTip(self.dos_data.note)
         self.ax.grid(True, alpha=0.3)
         self.ax.legend(loc='upper right', fontsize=8)
 
