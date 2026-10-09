@@ -19,7 +19,7 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
-from ..analysis.properties import GapResult, analyze_gap
+from ..analysis.properties import GapResult, analyze_gap, analyze_path_gap
 from ..engine.kp_tmd import TMDKpModel, TMDKpParams, TMD_REFERENCE_MASSES
 from ..engine.models import (
     BilayerGrapheneModel,
@@ -213,7 +213,7 @@ _register(MaterialPreset(
     exciton=ExcitonParams(
         mu_over_m0=_mu, r0_angstrom=2.0 * np.pi * _chi,
         eb_ref=(_eb, 0.10), source=_BERKELBACH_SOURCE),
-    source="Zahid et al., PRB 87, 125302 (2013) Table 3（96 参数）",
+    source="Zahid et al., AIP Advances 3, 052111 (2013) Table 3（96 参数）",
     tags=["全BZ", "量子输运级"],
 ))
 
@@ -271,8 +271,8 @@ def run_preset(key: str, n_per_segment: int = 40) -> Dict:
     }
     if p.engine in ("tb", "sp3d5"):
         from ..engine.kpath import KPath
-        gap = analyze_gap(model, n_per_segment=n_per_segment,
-                          n_valence=p.n_valence)
+        analyze = analyze_path_gap if p.engine == "sp3d5" else analyze_gap
+        gap = analyze(model, n_per_segment=n_per_segment, n_valence=p.n_valence)
         result["gap"] = gap
         if p.gap_ref is not None:
             ref, tol = p.gap_ref
@@ -287,7 +287,8 @@ def run_preset(key: str, n_per_segment: int = 40) -> Dict:
         result["gap"] = GapResult(
             gap=gap_min, direct=True, vbm=float(e0[1]), cbm=float(e0[2]),
             vbm_k=np.zeros(2), cbm_k=np.zeros(2),
-            vbm_label="K", cbm_label="K", n_valence=p.n_valence)
+            vbm_label="K", cbm_label="K", n_valence=p.n_valence,
+            scope="valley-local", status="insulator", raw_gap=gap_min)
         if p.gap_ref is not None:
             ref, tol = p.gap_ref
             result["gap_matches_ref"] = bool(abs(gap_min - ref) <= tol)
