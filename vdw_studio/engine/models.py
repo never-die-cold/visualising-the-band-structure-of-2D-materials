@@ -25,6 +25,7 @@ from typing import List, Optional, Sequence, Tuple
 import numpy as np
 
 from ..structure.lattice import Lattice
+from ..numerics import finite_scalar, finite_vector, hermitian_matrix, integer
 
 # 里德伯常量换算：ħ²/(2m₀) = 3.80998 eV·Å²（用于有效质量）
 HBAR2_OVER_2M0 = 3.809982444
@@ -53,14 +54,18 @@ class TightBindingModel:
                  hoppings: Sequence[Hopping],
                  name: str = "TB model") -> None:
         self.lattice = lattice
-        self.n_sites = int(n_sites)
+        self.n_sites = integer(n_sites, 'n_sites')
         self.site_symbols = list(site_symbols)
-        self.onsite = np.asarray(onsite, dtype=float)
+        self.onsite = finite_vector(onsite, self.n_sites, 'onsite').copy()
         self.hoppings = list(hoppings)
         self.name = name
-        if self.onsite.shape != (self.n_sites,):
-            raise ValueError("onsite 长度必须等于 n_sites")
+        if len(self.site_symbols) != self.n_sites:
+            raise ValueError('site_symbols length must equal n_sites')
         for h in self.hoppings:
+            integer(h.i, 'hopping i', minimum=0)
+            integer(h.j, 'hopping j', minimum=0)
+            finite_vector(h.dfrac, 3, 'hopping displacement')
+            finite_scalar(h.t, 'hopping strength')
             if not (0 <= h.i < self.n_sites and 0 <= h.j < self.n_sites):
                 raise ValueError(f"hopping 端点越界: {h}")
 
@@ -76,7 +81,9 @@ class TightBindingModel:
         相位约定：分数坐标的相位为 e^{2πi k·Δ}（k 为倒格分数坐标、
         Δ 为实格分数坐标时，k_cart·Δ_cart = 2π k·Δ）。
         """
-        k = np.asarray(kfrac, dtype=float).reshape(-1)[:3]
+        k = np.asarray(kfrac, dtype=float)
+        if k.shape not in ((2,), (3,)) or not np.isfinite(k).all():
+            raise ValueError('kfrac must contain 2 or 3 finite coordinates')
         if k.size == 2:
             k = np.r_[k, 0.0]
         n = self.n_sites
@@ -87,7 +94,7 @@ class TightBindingModel:
             H[h.i, h.j] += h.t * phase
             if h.i != h.j:
                 H[h.j, h.i] += np.conj(h.t * phase)
-        return H
+        return hermitian_matrix(H)
 
     def bands(self, kfracs) -> np.ndarray:
         """一组 k 点的本征能量。
@@ -98,6 +105,8 @@ class TightBindingModel:
             (N, n_sites) 能量数组 (eV)，每行升序。
         """
         kfracs = np.asarray(kfracs, dtype=float)
+        if kfracs.ndim != 2 or kfracs.shape[1] not in (2, 3) or not np.isfinite(kfracs).all():
+            raise ValueError('kfracs must be a finite (N, 2 or 3) array')
         out = np.empty((len(kfracs), self.n_sites))
         for ik, kf in enumerate(kfracs):
             out[ik] = np.linalg.eigvalsh(self.hamiltonian(kf))
