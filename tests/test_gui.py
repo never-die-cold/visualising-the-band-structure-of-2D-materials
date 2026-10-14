@@ -228,3 +228,34 @@ class TestMainWindow:
             if win.worker is not None:
                 win.worker.wait(10000)
             win.close()
+
+
+class TestMoireTab:
+    """moiré（转角）标签页：θ 控制 + 能带绘制 + 报告（独立于预设管线）。"""
+
+    def test_moire_tab_updates(self, app):
+        win = MainWindow()
+        try:
+            # 标签页存在
+            titles = [win.tabs.tabText(i) for i in range(win.tabs.count())]
+            assert "moiré (转角)" in titles
+            # 魔角计算并绘图
+            win.moire_theta_spin.setValue(1.05)
+            win.update_moire(n_shells=3, n_seg=12)
+            fig = win.moire_canvas.fig
+            assert len(fig.axes) == 1
+            ax = fig.axes[0]
+            assert len(ax.lines) >= 8          # 能带曲线 + 参考线
+            assert ax.get_xticklabels()[0].get_text() == "Γ"
+            # 报告: 魔角处 |v*|/v 接近 0；平带带宽为 meV 量级
+            text = win.moire_label.text()
+            assert "v*/v" in text and "meV" in text
+            v_rel = float(text.split("v*/v =")[1].split("；")[0])
+            assert abs(v_rel) < 0.05
+            # 远离魔角时速度应显著更大
+            win.moire_theta_spin.setValue(2.0)
+            win.update_moire(n_shells=3, n_seg=12)
+            v_rel_2 = float(win.moire_label.text().split("v*/v =")[1].split("；")[0])
+            assert abs(v_rel_2) > 3 * abs(v_rel)
+        finally:
+            win.close()

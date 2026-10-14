@@ -6,7 +6,7 @@
 │ 菜单栏（文件 / 仿真 / 帮助）  工具栏（材料选择 · 运行 · 导出）   │
 ├──────────┬───────────────────────────────────┬───────────────┤
 │ 工程树    │  标签页: 结构(3D) | 能带 | DOS |  │  参数面板      │
-│ (QDock)  │  布里渊区                          │  (QDock)      │
+│ (QDock)  │  布里渊区 | 谷物理 | moiré(转角)    │  (QDock)      │
 ├──────────┴───────────────────────────────────┴───────────────┤
 │ 日志 (QDock)                        状态栏 + 进度条            │
 └──────────────────────────────────────────────────────────────┘
@@ -92,11 +92,13 @@ class MainWindow(QMainWindow):
         self.dos_canvas = MplCanvas(4.4, 4.8)
         self.bz_canvas = MplCanvas(4.6, 4.4)
         self.valley_canvas = MplCanvas(6.2, 4.6)
+        self.moire_canvas = MplCanvas(6.2, 4.6)
         for name, canvas in (("结构 (3D)", self.structure_canvas),
                              ("能带", self.band_canvas),
                              ("态密度", self.dos_canvas),
                              ("布里渊区", self.bz_canvas),
-                             ("谷物理", self.valley_canvas)):
+                             ("谷物理", self.valley_canvas),
+                             ("moiré (转角)", self.moire_canvas)):
             self.tabs.addTab(canvas, name)
         self.setCentralWidget(self.tabs)
 
@@ -153,6 +155,23 @@ class MainWindow(QMainWindow):
         self.strain_label = QLabel("（仅紧束缚引擎；键长标度律 t∝d⁻ⁿ）")
         self.strain_label.setStyleSheet("color: #888;")
         form.addRow("", self.strain_label)
+
+        # --- moiré（转角双层石墨烯，连续模型，独立于材料预设） ---
+        self.moire_sep = QLabel("── 转角 moiré（BM 连续模型）──")
+        self.moire_sep.setStyleSheet("color:#1f4e79;font-weight:bold;")
+        form.addRow(self.moire_sep)
+        self.moire_theta_spin = QDoubleSpinBox()
+        self.moire_theta_spin.setRange(0.5, 5.0)
+        self.moire_theta_spin.setSingleStep(0.05)
+        self.moire_theta_spin.setDecimals(2)
+        self.moire_theta_spin.setValue(1.05)
+        form.addRow("转角 θ (°)", self.moire_theta_spin)
+        self.moire_button = QPushButton("更新 moiré 图")
+        form.addRow(self.moire_button)
+        self.moire_label = QLabel("θ = 1.05° 为第一魔角（平带）")
+        self.moire_label.setWordWrap(True)
+        self.moire_label.setStyleSheet("color:#555;font-size:11px;")
+        form.addRow("", self.moire_label)
 
         self.run_button = QPushButton("▶ 运行仿真")
         self.run_button.setStyleSheet(
@@ -212,6 +231,7 @@ class MainWindow(QMainWindow):
         self.material_combo.currentIndexChanged.connect(self._on_material)
         self.run_button.clicked.connect(self.run_simulation)
         self.cancel_button.clicked.connect(self.cancel_simulation)
+        self.moire_button.clicked.connect(self.update_moire)
         for widget in (self.strain_x_spin, self.strain_y_spin, self.field_spin,
                        self.kpoint_spin, self.mesh_spin, self.sigma_spin):
             widget.valueChanged.connect(self._on_parameters_changed)
@@ -548,6 +568,63 @@ class MainWindow(QMainWindow):
         self._set_busy(False)
         self.log(f"[错误] {msg}")
         QMessageBox.critical(self, "仿真失败", msg.splitlines()[0])
+
+    # ------------------------------------------------------------------
+    # moiré 预览（转角双层石墨烯，独立于材料预设管线）
+    # ------------------------------------------------------------------
+    def update_moire(self, n_shells: int = 4, n_seg: int = 30) -> None:
+        """绘制当前转角的 moiré 能带并报告 v*/v 与平带带宽。
+
+        计算 2–3 秒（同步执行，先刷新状态文本）；模型与验证锚点见
+        ``engine.moire``（BM 2011，魔角 1.05°）。
+        """
+        from PyQt5.QtWidgets import QApplication
+        from ..engine.moire import TwistedBilayerGraphene
+
+        theta = float(self.moire_theta_spin.value())
+        self.status_label.setText(f"计算 moiré 能带（θ = {theta}°）…")
+        self.moire_button.setEnabled(False)
+        QApplication.processEvents()          # 先刷新状态栏，再进入重计算
+        try:
+            model = TwistedBilayerGraphene(theta_deg=theta,
+                                           n_shells=n_shells)
+            path, labels, ticks = model.moire_path(n_seg=n_seg)
+            E = model.bands(list(path))
+            v_rel = model.dirac_velocity() / model.hbar_v
+            width_mev = model.flat_band_width(n_grid=8) * 1e3
+
+            fig = self.moire_canvas.fig
+            fig.clf()
+            ax = fig.add_subplot(111)
+            x = np.arange(len(path))
+            n0 = E.shape[1] // 2
+            for b in range(n0 - 3, min(n0 + 4, E.shape[1])):
+                flat_pair = b in (n0 - 1, n0)
+                ax.plot(x, E[:, b] * 1e3, lw=(1.6 if flat_pair else 0.9),
+                        color=("#c0392b" if flat_pair else "#7f8c8d"),
+                        alpha=(0.95 if flat_pair else 0.8))
+            ax.axhline(0.0, color="k", lw=0.6, ls="--", alpha=0.6)
+            for t, lab in zip(ticks, labels):
+                ax.axvline(t, color="k", lw=0.5, alpha=0.3)
+            ax.set_xticks(ticks)
+            ax.set_xticklabels(labels)
+            ax.set_ylabel("E (meV)")
+            ax.set_title(f"moiré 能带（θ = {theta}°，w = 110 meV，"
+                         f"Γ$_m$-M-K-Γ$_m$）", fontsize=10)
+            ax.set_ylim(-80, 80)
+            fig.tight_layout()
+            self.moire_canvas.draw_idle()
+
+            self.moire_label.setText(
+                f"v*/v = {v_rel:+.3f}；平带带宽 ≈ {width_mev:.1f} meV；"
+                f"moiré 周期 = {model.geom.l_moire:.0f} Å")
+            self.log(f"moiré: θ = {theta}°（α = {model.alpha:.3f}）→ "
+                     f"v*/v = {v_rel:+.4f}, 平带带宽 = {width_mev:.2f} meV, "
+                     f"moiré 周期 = {model.geom.l_moire:.1f} Å")
+            self.tabs.setCurrentWidget(self.moire_canvas)
+        finally:
+            self.moire_button.setEnabled(True)
+            self.status_label.setText("就绪")
 
     # ------------------------------------------------------------------
     # 导出
