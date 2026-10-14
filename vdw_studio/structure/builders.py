@@ -116,8 +116,16 @@ def tmd(name: str = "MoS2", a: Optional[float] = None,
         dxx: Optional[float] = None, vacuum: float = 15.0) -> Crystal:
     """单层过渡金属硫族化合物 MX₂（1H 相，P-6m2，3 原子/胞）。
 
-    结构：金属 M 位于 (0,0)，两个硫族 X 位于 (1/3, 2/3) 与 (2/3, 1/3)、
-    面外高度 ±dxx/2（相对金属原子平面）。M-X 键长 = sqrt(a²/3 + dxx²/4)。
+    结构：金属 M 位于 (0,0)，两个硫族 X **位于同一面内空位 (1/3, 2/3)**、
+    面外高度 ±dxx/2（相对金属原子平面）。两个 X 上下对齐（eclipsed）
+    是 **三棱柱配位**（1H 相）的定义特征——上下 X 三角形对齐；
+    若放在两个不同空位 (1/3,2/3)/(2/3,1/3) 则得到 60° 交错排列，
+    即八面体配位的 1T 相（结构不同、物理不同）。
+    M-X 键长 = sqrt(a²/3 + dxx²/4)（两种排列的键长相同，仅方位不同）。
+    参考：2H-MoS₂ 体相 P6₃/mmc，Mo 2c、S 4f——每个 Mo 的三棱柱
+    6 个 S 同属一个空位类型（两 S 面内坐标相同）；见 Wikipedia
+    "Molybdenum disulfide" 的 trigonal prismatic 表述与 Acta Cryst. B39,
+    404 (1983) 结构数据。
 
     参数:
         name: 材料名（"MoS2" / "MoSe2" / "WS2" / "WSe2" / "MoTe2" / "WTe2"）。
@@ -136,7 +144,7 @@ def tmd(name: str = "MoS2", a: Optional[float] = None,
     half = dxx / 2
     c.add_atom(p["metal"], (0.0, 0.0, 0.5))
     c.add_atom(p["chalcogen"], (1 / 3, 2 / 3, 0.5 + half / vacuum))
-    c.add_atom(p["chalcogen"], (2 / 3, 1 / 3, 0.5 - half / vacuum))
+    c.add_atom(p["chalcogen"], (1 / 3, 2 / 3, 0.5 - half / vacuum))
     return c
 
 
@@ -167,12 +175,14 @@ def tmd_bilayer(name: str = "MoS2", a: Optional[float] = None,
     c = Crystal(lat)
     half = dxx_ / 2
     z1, z2 = 0.5 - interlayer / 2 / vacuum, 0.5 + interlayer / 2 / vacuum
-    # 层 1 = 单层平移 (1/3,2/3)：Mo(1/3,2/3)，三棱柱 S_up 在 (2/3,1/3)、
-    # S_dn 在 (0,0)（与单层 Mo(0,0)/S_up(1/3,2/3)/S_dn(2/3,1/3) 同构）
+    # 层 1：Mo(1/3,2/3)，三棱柱上下 S 同空位 (2/3,1/3)（eclipsed）
     c.add_atom(p_["metal"], (1 / 3, 2 / 3, z1))
     c.add_atom(p_["chalcogen"], (2 / 3, 1 / 3, z1 + half / vacuum))
-    c.add_atom(p_["chalcogen"], (0.0, 0.0, z1 - half / vacuum))
-    # 层 2 = 层 1 旋转 180°（金属位 (1/3,2/3) ↔ (2/3,1/3) 交换）
+    c.add_atom(p_["chalcogen"], (2 / 3, 1 / 3, z1 - half / vacuum))
+    # 层 2 = 层 1 旋转 180°（Mo (1/3,2/3)→(2/3,1/3)，
+    # 其 S 空位随之换边 (2/3,1/3)→(1/3,2/3)）——2H 堆叠的特征。
+    # 此排列与 2H-MoS₂ 体相 P6₃/mmc 的 2c/4f 坐标一致（层间最近 S–S
+    # = √((c/2−dxx)² + (a/√3)²) ≈ 3.49 Å vdW 接触，测试锚点）。
     c.add_atom(p_["metal"], (2 / 3, 1 / 3, z2))
     c.add_atom(p_["chalcogen"], (1 / 3, 2 / 3, z2 + half / vacuum))
     c.add_atom(p_["chalcogen"], (1 / 3, 2 / 3, z2 - half / vacuum))
