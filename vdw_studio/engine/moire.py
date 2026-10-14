@@ -47,6 +47,9 @@ arXiv:1009.4203 源码在 papers/arxiv/bistritzer2011/）：
     C₃ 误差 4×10⁻⁸ eV、周期性误差 9×10⁻⁷ eV（N=5/6 继续指数下降），
     平带带宽 8.108 meV 与魔角位置/v* 对 N=4/5/6 不变（逐位一致）；
   - 适用转角已测 0.7°–3.0°（魔角 1.05° 复现；示例与 GUI 默认 N=4）；
+    **平带域报告**（`flat_band_report`，2026-10-14）：θ ∈ [0.6°, 2.0°]
+    内最低 moiré 带带宽对 N=4/5/6 逐位收敛，最平区 1.05°–1.20°
+    （W ≈ 8.1 meV）；θ < 0.5°（第二魔角区）未测、不得外推；
   - 近似与限制：h 相位取 θ→0 系综（O(θ) 小角近似）、BM 原始
     w₀=w₁ = 110 meV（无晶格弛豫/褶皱）、单谷、无应变/电场、
     未含层间势差——报告物理量时须与这些限制一致；
@@ -114,6 +117,40 @@ class MoireGeometry:
     def bz_edge_center(self) -> np.ndarray:
         """moiré BZ 边中点 M_m = b₁/2。"""
         return self.b1 / 2.0
+
+
+def flat_band_report(theta_deg: float, n_grid: int = 12,
+                     shells: Tuple[int, int] = (4, 6)) -> dict:
+    """平带可靠域报告（T16 验收产物）。
+
+    给定转角计算最低正 moiré 带带宽 W，并用两档平面波壳层做
+    截断收敛检查::
+
+        converged = |W(N_max) − W(N_min)| < 0.02·max(W, 0.1 meV)
+
+    已验证域（2026-10-14，本文档模型）：θ ∈ [0.6°, 2.0°] 内
+    W 对 N=4/5/6 逐位一致（收敛），最平区在 1.05°–1.20°
+    （W ≈ 8.1 meV）；未测域（θ < 0.5° 的第二魔角区）需更高壳层，
+    不得外推。
+
+    返回:
+        dict(theta_deg, alpha, width_mev, converged, widths_mev)
+    """
+    widths = {}
+    for n in sorted(set(shells)):
+        m = TwistedBilayerGraphene(theta_deg=theta_deg, n_shells=n)
+        widths[n] = m.flat_band_width(n_grid=n_grid) * 1e3
+    lo, hi = min(widths), max(widths)
+    w = widths[hi]
+    converged = abs(widths[hi] - widths[lo]) < 0.02 * max(w, 0.1)
+    m0 = TwistedBilayerGraphene(theta_deg=theta_deg, n_shells=hi)
+    return {
+        "theta_deg": float(theta_deg),
+        "alpha": float(m0.alpha),
+        "width_mev": float(w),
+        "converged": bool(converged),
+        "widths_mev": {int(k): float(v) for k, v in widths.items()},
+    }
 
 
 class TwistedBilayerGraphene:

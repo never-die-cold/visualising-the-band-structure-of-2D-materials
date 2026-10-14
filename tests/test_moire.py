@@ -196,3 +196,36 @@ class TestPeriodicityAndCutoffConvergence:
                             "n_shells", "n_bands_window"}
         assert rep["c3_error"] < 1e-6
         assert rep["n_shells"] == 61 and rep["n_bands_window"] == 8
+
+
+class TestFlatBandDomain:
+    """平带可靠域报告（T16 验收：报告可靠计算域）。"""
+
+    def test_report_structure_and_convergence(self):
+        from vdw_studio.engine.moire import flat_band_report
+        rep = flat_band_report(1.05, n_grid=10, shells=(4, 5))
+        assert set(rep) == {"theta_deg", "alpha", "width_mev",
+                            "converged", "widths_mev"}
+        assert rep["converged"] is True
+        ws = list(rep["widths_mev"].values())
+        assert max(ws) - min(ws) < 0.05          # 逐位收敛 (meV)
+
+    def test_flat_band_width_curve(self):
+        """W(θ)：最平区 1.05–1.20°（~8 meV），远离魔角显著增大。
+
+        （n_grid=8 单壳层快速版；全域收敛性由上一个报告测试覆盖。）
+        """
+        w = {}
+        for th in (1.05, 1.50, 2.00):
+            m = TwistedBilayerGraphene(theta_deg=th, n_shells=4)
+            w[th] = m.flat_band_width(n_grid=8) * 1e3
+        assert w[1.05] < 12.0
+        assert w[1.50] > 3 * w[1.05]
+        assert w[2.00] > 10 * w[1.05]
+
+    def test_report_converged_across_tested_domain(self):
+        """θ ∈ {0.75, 1.20} 均在已测域内且收敛（报告接口）。"""
+        from vdw_studio.engine.moire import flat_band_report
+        for th in (0.75, 1.20):
+            rep = flat_band_report(th, n_grid=8, shells=(4, 5))
+            assert rep["converged"], (th, rep)

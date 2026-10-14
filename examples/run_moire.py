@@ -38,7 +38,8 @@ def main() -> None:
     out.mkdir(exist_ok=True)
     setup_cjk_fonts()
 
-    fig, (ax_band, ax_vel) = plt.subplots(1, 2, figsize=(11, 4.4))
+    fig, (ax_band, ax_vel, ax_dom) = plt.subplots(
+        1, 3, figsize=(15.5, 4.4))
 
     # ---- (a) moiré 能带：魔角 vs 一般转角 -----------------------------
     for theta, color, label in ((2.0, "#888888", "2.0°（一般转角）"),
@@ -85,6 +86,22 @@ def main() -> None:
     ax_vel.set_title("(b) Dirac 点速度重整与魔角")
     ax_vel.set_ylim(-0.6, 1.0)
     ax_vel.legend(fontsize=8, loc="upper right")
+
+    # ---- (c) 平带域：W(θ)（可靠域报告的可视化） --------------------
+    thetas_dom = np.linspace(0.6, 2.0, 13)
+    widths = []
+    for th in thetas_dom:
+        m = TwistedBilayerGraphene(theta_deg=float(th), n_shells=4)
+        widths.append(m.flat_band_width(n_grid=8) * 1e3)
+    ax_dom.semilogy(thetas_dom, widths, "o-", ms=4, color="#2c3e50")
+    ax_dom.axvspan(0.6, 2.0, color="#27ae60", alpha=0.08)
+    ax_dom.axvline(1.05, color="#c0392b", lw=1.0, ls=":")
+    ax_dom.annotate("最平区 1.05–1.20°, W ≈ 8 meV", xy=(1.05, 8.1),
+                    xytext=(1.25, 30), fontsize=8,
+                    arrowprops=dict(arrowstyle="->", lw=0.8))
+    ax_dom.set_xlabel("转角 θ (度)")
+    ax_dom.set_ylabel("最低 moiré 带带宽 W (meV)")
+    ax_dom.set_title("(c) 平带域（N=4 已收敛域 0.6–2.0°）", fontsize=10)
 
     fig.tight_layout()
     fig.savefig(out / "moire_bands.png", dpi=160)
