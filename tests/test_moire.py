@@ -159,3 +159,40 @@ class TestC3SymmetryConvergence:
             if prev is not None:
                 assert central8 < prev * 1e-2           # 随壳层指数收敛
             prev = central8
+
+
+class TestPeriodicityAndCutoffConvergence:
+    """T16 门槛：周期性 + 截断收敛 + 独立对称性报告（限定低能带窗口）。"""
+
+    def test_periodicity_converges(self):
+        """E(k+b₁/b₂) 周期性误差随壳层指数收敛（中央 8 带）。"""
+        prev = None
+        for n in (4, 5, 6):
+            m = TwistedBilayerGraphene(theta_deg=1.05, n_shells=n)
+            rep = m.symmetry_report()
+            err = max(rep["periodicity_b1"], rep["periodicity_b2"])
+            assert err < 1e-5                       # N=4 已 < 10 µeV
+            if prev is not None:
+                assert err < prev * 1e-2             # 指数收敛
+            prev = err
+
+    def test_flat_band_width_shell_invariant(self):
+        """平带带宽与魔角 v* 对壳层不变（N=4/5/6 逐位一致，物理收敛）。"""
+        ref_w = ref_v = None
+        for n in (4, 5, 6):
+            m = TwistedBilayerGraphene(theta_deg=1.05, n_shells=n)
+            w = m.flat_band_width(n_grid=12)
+            v = m.dirac_velocity() / m.hbar_v
+            if ref_w is None:
+                ref_w, ref_v = w, v
+            assert w == pytest.approx(ref_w, rel=1e-3)
+            assert v == pytest.approx(ref_v, rel=1e-3)
+
+    def test_symmetry_report_structure(self):
+        """报告接口: 字段完整且低能带窗口误差为物理量级。"""
+        m = TwistedBilayerGraphene(theta_deg=1.05, n_shells=4)
+        rep = m.symmetry_report()
+        assert set(rep) == {"c3_error", "periodicity_b1", "periodicity_b2",
+                            "n_shells", "n_bands_window"}
+        assert rep["c3_error"] < 1e-6
+        assert rep["n_shells"] == 61 and rep["n_bands_window"] == 8

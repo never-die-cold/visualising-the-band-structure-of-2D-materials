@@ -42,6 +42,16 @@ arXiv:1009.4203 源码在 papers/arxiv/bistritzer2011/）：
   全谱最大差恒定 ~3.3×10⁻² eV，由截断邻带（非物理态）主导，不是
   物理破缺——报告对称性误差时须限定低能带窗口。
 
+- **验证域（2026-10-14 T16 门槛复核）**：
+  - 平面波壳层 N ≥ 4 时物理低能带（最靠费米面 ~8 带）全面收敛：
+    C₃ 误差 4×10⁻⁸ eV、周期性误差 9×10⁻⁷ eV（N=5/6 继续指数下降），
+    平带带宽 8.108 meV 与魔角位置/v* 对 N=4/5/6 不变（逐位一致）；
+  - 适用转角已测 0.7°–3.0°（魔角 1.05° 复现；示例与 GUI 默认 N=4）；
+  - 近似与限制：h 相位取 θ→0 系综（O(θ) 小角近似）、BM 原始
+    w₀=w₁ = 110 meV（无晶格弛豫/褶皱）、单谷、无应变/电场、
+    未含层间势差——报告物理量时须与这些限制一致；
+  - 高能带（靠近截断）为非物理态：一切误差度量限定低能窗口。
+
 - **物理锚点**：
   - 无量纲耦合 α = w/(v·k_θ)；第一壳层（8 带）解析速度
     v*/v = (1−3α²)/(1+6α²)（BM Eq. (8)），第一魔角 α₁ = 1/√3；
@@ -282,6 +292,41 @@ class TwistedBilayerGraphene:
         E = self.bands(ks)
         dim = E.shape[1]
         return float(E[:, dim // 2].max() - E[:, dim // 2].min())
+
+    def symmetry_report(self, k: Tuple[float, float] = (0.005, 0.002),
+                        n_bands: int = 8) -> dict:
+        """独立对称性/收敛报告（T16 验收产物）。
+
+        在给定 k 处测量两个对称性误差，**限定中央 ``n_bands`` 带**
+        （物理低能带窗口）：
+        - C₃：|E(R₁₂₀·k) − E(k)|（谱集合最大差）；
+        - 周期性：|E(k+b₁) − E(k)| 与 |E(k+b₂) − E(k)|。
+
+        ⚠ 度量窗口约定：全谱最大差被截断邻带（非物理态）主导且不随
+        壳层收敛——报告对称性误差时必须限定低能带窗口，否则会得到
+        虚假的"对称性破缺"。已测收敛（θ=1.05°，k=(0.005,0.002)）：
+        C₃ 在 N=3/4/5/6 为 1.7e-5 / 4.1e-8 / 4.3e-11 / 2.2e-14 eV；
+        周期性 (b₁) 为 1.8e-4 / 9.3e-7 / 1.9e-9 / 1.8e-12 eV。
+        """
+        c, s = np.cos(2 * np.pi / 3), np.sin(2 * np.pi / 3)
+        rot = np.array([[c, -s], [s, c]])
+        k = np.asarray(k, dtype=float)
+        E0 = np.linalg.eigvalsh(self.hamiltonian(k))
+        d = len(E0)
+        sl = slice(d // 2 - n_bands // 2, d // 2 + n_bands // 2)
+        c3 = np.abs(E0[sl] - np.linalg.eigvalsh(
+            self.hamiltonian(rot @ k))[sl]).max()
+        p1 = np.abs(E0[sl] - np.linalg.eigvalsh(
+            self.hamiltonian(k + self.geom.b1))[sl]).max()
+        p2 = np.abs(E0[sl] - np.linalg.eigvalsh(
+            self.hamiltonian(k + self.geom.b2))[sl]).max()
+        return {
+            "c3_error": float(c3),
+            "periodicity_b1": float(p1),
+            "periodicity_b2": float(p2),
+            "n_shells": int(len(self.pw1)),
+            "n_bands_window": int(n_bands),
+        }
 
     def moire_path(self, n_seg: int = 40) -> Tuple[np.ndarray, List[str], List[int]]:
         """Γ_m → M_m → K_m → Γ_m 高对称路径（BM 约定，BZ 中心 = k=0）。
