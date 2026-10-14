@@ -9,9 +9,30 @@ on-site 自旋轨道（arXiv:1304.0074 Table 3，参数逐一转录）。
 - 近邻：Mo–S 六键（三棱柱）+ 同亚层 S–S、Mo–Mo（距离 a）；
 - 自旋轨道：on-site λ·(LxSx+LySy+LzSz)，p/d 壳层用该元素的 λ。
 
-验证目标（论文 Table 1/2）：单层 K_v1→K_c = 1.805 eV、
+**几何（2026-10-14 修正）**：两个 S 位于**同一面内空位 (1/3, 2/3)**、
+面外 ±dxx/2——上下 S 三角形对齐的**三棱柱配位**（1H 相的定义特征；
+2H-MoS₂ 体相 P6₃/mmc 的 2c/4f 坐标同构）。此前的实现把两个 S 放在
+不同空位（60° 交错 = 八面体/1T 型），晶体场给反了 d 能级顺序。
+键数、键长与结构构建器 ``structure.builders.tmd`` 同步修正。
+
+**中性填充（2026-10-14 确认）**：Mo (4d⁵5s¹) + 2×S (3s²3p⁴) =
+**18 电子/胞**。含 SOC 时 54 态中占据 18 个（不可用"半填 27"——
+预设 n_valence 已同步修正为 18）。
+
+**验证目标（论文 Table 1/2）**：单层 K_v1→K_c = 1.805 eV、
 K_v2→K_c = 1.969 eV（VB 劈裂 0.164 eV）、m_e*(K) ≈ 0.43 m₀、
 m_h*(K) ≈ 0.46 m₀。
+
+**当前状态（防幻觉声明）**：几何与填充已独立核实；S(k) 正定、
+H 厄米、广义本征值可解。但 **带隙/能级顺序尚未与文献对账**：
+现实现下 K 点晶体场顺序反转（带顶为 e′ 型 d_yz/d_zx，正确应为
+e 型 d_x²−y²/d_xy），修正几何下 E[18]−E[17] ≈ 0.98 eV（无 SOC，
+目标 ~1.9）。已系统扫描的装配自由度（S–Mo 角色互换 ×2、
+通道族符号翻转 2⁶ 组合、S–Mo 单/双通道符号 106 组合）均不能
+同时满足"带顶 m=±2 主导 + 带隙接近目标"；π 族整体翻转可恢复
+正确带顶字符（m=±2 权重 0.74）但带隙仍偏低（0.76 eV）——
+线索指向 Nanoskif 双中心坐标系约定（η_ij 型轨道框架旋转，
+非逐通道符号可表达）。详见 docs/REFERENCES.md。
 
 SK 角因子的构造与验证见 ``slater_koster.py``。
 """
@@ -214,24 +235,22 @@ class ZahidMoS2Model:
         a: 面内晶格常数 (Å)，论文 PBE-D2 优化值 3.179。
         dxx: 面外 S–S 距离 (Å)，论文值 3.135。
         soc: 是否开启自旋轨道耦合。
-        unlike_sign: 异种原子对角因子的整体符号 ±1
-            （SK 表键方向约定，由文献带隙值校验确定）。
     """
 
     VACUUM = 15.0
 
     def __init__(self, a: float = 3.179, dxx: float = 3.135,
-                 soc: bool = True, unlike_sign: float = 1.0) -> None:
+                 soc: bool = True) -> None:
         self.lattice = Lattice.hexagonal(a, vacuum=self.VACUUM)
         self.a = a
         self.dxx = dxx
         self.soc = soc
-        self.unlike_sign = float(unlike_sign)
         self.name = "MoS2 sp3d5 (Zahid 2013)"
         h = dxx / 2
+        # 三棱柱配位：两个 S 同一面内空位 (1/3, 2/3)（上下对齐）
         self.sites = [("Mo", np.array([0.0, 0.0, 0.5])),
                       ("S", np.array([1 / 3, 2 / 3, 0.5 + h / self.VACUUM])),
-                      ("S", np.array([2 / 3, 1 / 3, 0.5 - h / self.VACUUM]))]
+                      ("S", np.array([1 / 3, 2 / 3, 0.5 - h / self.VACUUM]))]
         self.n_atoms = 3
         self.n_basis = 54
         self.bonds = self._build_bonds()
@@ -301,7 +320,7 @@ class ZahidMoS2Model:
             if kind == "SMo":
                 # ⟨S|H|Mo⟩ 块 + 厄米共轭块 ⟨Mo|H|S⟩
                 add_pair(i, j, dfrac, INTEGRALS_SMO_H, INTEGRALS_SMO_S,
-                         self.unlike_sign, symmetric=True)
+                         1.0, symmetric=True)
             elif kind == "SS":
                 add_pair(i, j, dfrac, INTEGRALS_SS_H, INTEGRALS_SS_S,
                          1.0, symmetric=True)
@@ -330,11 +349,11 @@ class ZahidMoS2Model:
         """广义本征值 E(k)。kfracs: (N, 2) 倒格分数坐标。返回 (N, 54) 升序。
 
         .. warning::
-           已知问题：按论文转录的重叠积分在本文的 SK 角因子约定下，
-           S(k) 在部分 k 点非正定（Mo–Mo 的 d-d π 元素符号与本文约定
-           不一致）。Zahid 原文未写明其 SK 表的方向/相位约定（Nanoskif
-           内部约定），在获得该约定参考前，本求解器对非正定 S(k)
-           **显式抛错**而不输出未定义的结果。见 ``docs/REFERENCES.md``。
+           已知问题（防幻觉声明）：S(k) 正定性与 H 厄米性已验证；
+           但**带隙/能级顺序尚未与文献（K_v1→K_c = 1.805 eV）对账**——
+           修正几何（三棱柱）后 K 点晶体场顺序反转，装配约定扫描
+           未能同时满足字符与带隙判据。结果仅可作结构/定性用途，
+           不得当作定量带隙参考。见模块文档与 ``docs/REFERENCES.md``。
         """
         kfracs = np.asarray(kfracs, float)
         out = np.empty((len(kfracs), self.n_basis))

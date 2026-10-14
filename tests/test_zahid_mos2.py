@@ -188,18 +188,77 @@ class TestMatrixAssembly:
         assert ONSITE["S"]["lambda"] == 0.2129
 
 
+class TestGeometryAndFilling:
+    """几何与填充约定（2026-10-14 独立核实后固化）。"""
+
+    def test_trigonal_prismatic_eclipsed(self):
+        """三棱柱配位：两个 S 位于同一面内空位（上下对齐，eclipsed）。
+
+        1H 相的定义特征；此前的实现把两个 S 放在 (1/3,2/3)/(2/3,1/3)
+        两个不同空位（60° 交错 = 八面体/1T 型），晶体场给反。
+        参考：2H-MoS₂ 体相 P6₃/mmc（Mo 2c / S 4f）；两个 S 面内坐标
+        相同、面外 ±dxx/2。
+        """
+        m = ZahidMoS2Model(soc=False)
+        s_fracs = [site[1][:2] for site in m.sites if site[0] == "S"]
+        assert len(s_fracs) == 2
+        assert s_fracs[0] == pytest.approx(s_fracs[1], abs=1e-12)
+
+    def test_s2_azimuth_matches_triangle(self):
+        """两个 S 的方位角一致（相对 Mo），且面内距离 = a/√3。"""
+        m = ZahidMoS2Model(soc=False)
+        s1, s2 = [site[1] for site in m.sites if site[0] == "S"]
+        c1 = m.lattice.frac_to_cart(s1)
+        c2 = m.lattice.frac_to_cart(s2)
+        assert np.hypot(*c1[:2]) == pytest.approx(m.a / np.sqrt(3), rel=1e-6)
+        assert np.hypot(*c2[:2]) == pytest.approx(m.a / np.sqrt(3), rel=1e-6)
+        az1 = np.arctan2(c1[1], c1[0])
+        az2 = np.arctan2(c2[1], c2[0])
+        assert az1 == pytest.approx(az2, abs=1e-12)
+
+    def test_mo_sixfold_coordination(self):
+        """Mo 六配位（三棱柱）、S 三配位（与结构构建器一致）。"""
+        m = ZahidMoS2Model(soc=False)
+        sm = [b for b in m.bonds if b[3] == "SMo"]
+        assert len(sm) == 6
+        per_s = {}
+        for (i, j, _, _) in sm:
+            per_s[i] = per_s.get(i, 0) + 1
+        assert sorted(per_s.values()) == [3, 3]
+
+    def test_neutral_filling_convention(self):
+        """中性填充 = 18 电子/胞（Mo 4d⁵5s¹ + 2×S 3s²3p⁴）。
+
+        含 SOC 时 54 态占 18（而非旧的"半填 27"）；无 SOC 时 9 个
+        自旋简并能级对。预设 n_valence 已同步为 18。
+        """
+        from vdw_studio.presets import get_preset
+        p = get_preset("mos2_sp3d5")
+        assert p.n_valence == 18
+
+
 class TestKnownIssue:
     def test_overlap_positive_definite(self):
-        """S(k) 在测试 k 点上正定（Gram 矩阵判据）。
-
-        注：早期版本因未加入 on-site 单位重叠而出现非正定；加入后已解决。
-        剩余问题：带隙数值与文献目标（1.805 eV）尚未吻合，
-        待 Nanoskif 相位约定确认（见 docs/REFERENCES.md）。
-        """
+        """S(k) 在测试 k 点上正定（Gram 矩阵判据，修正几何后复验）。"""
         m = ZahidMoS2Model(soc=False)
         for kf in [(0, 0), (1 / 3, 1 / 3), (0.2, 0.1), (0.4, 0.3)]:
             _, S = m.hamiltonian_overlap(kf)
             assert np.linalg.eigvalsh(S).min() > 1e-6
+
+    def test_gap_not_yet_validated(self):
+        """防幻觉声明：带隙/能级顺序尚未与文献对账（保持显式记录）。
+
+        修正几何 + 填充 18 下：E[18]−E[17]（K 点，无 SOC）≈ 0.98 eV，
+        文献目标 ~1.9 eV（含 SOC 1.805）；且 K 点晶体场顺序反转
+        （带顶为 e′ 型 d_yz/d_zx）。装配自由度扫描（角色互换、
+        通道族符号、106 组单/双通道符号）均未同时满足字符与带隙
+        判据——待 Nanoskif 双中心坐标系约定。
+        """
+        m = ZahidMoS2Model(soc=False)
+        E = m.energies_at([1 / 3, 1 / 3, 0.0])
+        gap_now = E[18] - E[17]
+        assert 0.5 < gap_now < 1.5          # 现实现的数值（非文献值）
+        assert gap_now < 1.805 * 0.9        # 明确低于目标 → 不得作定量参考
 
     def test_bands_runs(self):
         """广义本征值可求解（不抛错）。"""

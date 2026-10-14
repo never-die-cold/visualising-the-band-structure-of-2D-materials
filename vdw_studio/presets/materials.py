@@ -206,10 +206,11 @@ _register(MaterialPreset(
     structure_key="MoS2",
     make_structure=build,
     make_model=lambda: ZahidMoS2Model(soc=True),
-    n_valence=27,
+    n_valence=18,   # Mo(4d⁵5s¹)+2S(3s²3p⁴) = 18 电子/胞（含 SOC 占 18/54）
     gap_ref=None,
-    gap_note="sp³d⁵ 引擎：H/S 厄米与 S(k) 正定已验证；带隙与文献吻合"
-    "尚待 Nanoskif 相位约定确认（见 docs/REFERENCES.md）",
+    gap_note="sp³d⁵ 引擎：几何（三棱柱）与填充（18 电子）已独立核实，"
+    "S(k) 正定、可解；带隙/能级顺序待 Nanoskif 约定（见 docs/REFERENCES.md），"
+    "当前数值不得作定量参考",
     exciton=ExcitonParams(
         mu_over_m0=_mu, r0_angstrom=2.0 * np.pi * _chi,
         eb_ref=(_eb, 0.10), source=_BERKELBACH_SOURCE),
