@@ -40,20 +40,31 @@ vdW Studio 内置材料结构库与多种仿真引擎，不依赖外部第一性
   主质量（曲率张量本征分解，各向异性特征量）、费米速度
   （[坐标/方向与步长约定](../docs/DERIVATIVE_COORDINATES.md)；默认方向为倒格基矢组合）
 - **可视化** — 3D 球棍结构图、能带图、DOS、布里渊区与 k 路径
-- **图形界面** — 工程树 + 多标签结果页（结构/能带/DOS/布里渊区）+ 参数面板 +
-  后台计算线程
+- **图形界面** — 工程树 + 多标签结果页（结构/能带/DOS/布里渊区/谷物理/
+  moiré 转角）+ 参数面板 + 后台计算线程
 - **命令行** — 批量仿真与结构导出
 - **谷物理** — Berry 曲率热图、谷半 Chern 数、圆偏振选择定则
   （局部模型的解析/时间反演基准；不表示全 BZ 拓扑积分）
 - **谷磁矩与谷 Zeeman** — 轨道磁矩通式（RMP 2010 波包表述）+
   带边 μ*_B = (m₀/m*)·μ_B + 谷劈裂 ΔE = −2m·μ_B·B，
   三路独立实现对账（RMP 原式有限差分 / 速度矩阵元 / 两带解析）
+- **玻尔兹曼输运（CRTA）** — 2D 电导/迁移率张量（σ = e²τ∫v v(−∂f/∂ε)，
+  有限温费米能级反解；e²/h 与 cm²/Vs 单位）。验证：黑磷烯空穴带
+  Drude μ = eτ/m*（1–3%）、各向异性比 = 质量比（方向与 Qiao 2014
+  一致）、费米能级 ≤0.5 meV；触碰带热窗污染的适用边界见模块文档。
+  GUI/CLI 尚未接入（API 与示例脚本可用）
 - **2D 激子求解器** — Rytova–Keldysh 屏蔽势 + Fourier–Bessel DVR，
   库仑极限与 2D 氢原子精确谱对账（<2%）；四种 TMD 的 μ/r₀ 默认值
   按 Berkelbach 2013 Table 文献标定，精确解与文献变分束缚能对账
   （偏差 2–5%），`solve_preset_exciton()` 一键介电工程调谐
 - **转角 moiré 引擎** — Bistritzer–MacDonald 连续模型（任意转角
-  平面波展开，实验性）：现有第一壳层速度和 k=0 锚点通过；有限 k 的 C₃、周期性与截断收敛仍需 T16 验证，现有平带图作为研究示例
+  平面波展开，实验性）：第一壳层速度、k=0 锚点与魔角 1.05° 平带通过；
+  物理低能带的 C₃ 对称性已定论（随壳层指数收敛，回归测试固化），
+  周期性与全域平带窗口报告待 T16；GUI 有「moiré (转角)」标签页
+- **VASP PROCAR 接口** — 投影能带（轨道/离子分辨）解析：
+  动态轨道列（含 f 轨道）、畸形文件明确报错；
+  `orbital_weights` / `orbital_fraction` / `band_character`
+  直接给出"带 → 轨道字符"（如 MoS₂ 价带顶 Mo-d 主导）
 - **结果数据库** — SQLite 记录每次仿真（材料/参数/结果 JSON），
   高通量批量筛选与历史查询（CLI `history`）
 - **自动验证** — 项目测试覆盖物理基准、全区与路径带隙、VASP 输入、真实 GUI 后台运行与 CLI；最新验证结果见项目待办记录
@@ -101,6 +112,7 @@ python examples/run_mos2_kp.py        # MoS₂ k·p 谷物理
 python examples/run_phosphorene.py    # 黑磷烯各向异性
 python examples/run_moire.py          # 转角双层石墨烯 moiré 平带（魔角 1.05°）
 python examples/run_exciton.py        # 2D 激子束缚能（Keldysh 势）
+python examples/run_transport.py      # 黑磷烯各向异性输运（CRTA 迁移率）
 python examples/export_all_structures.py  # 全部材料结构导出
 ```
 

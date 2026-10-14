@@ -134,3 +134,28 @@ class TestFullModel:
             TwistedBilayerGraphene(theta_deg=0.0)
         with pytest.raises(ValueError):
             TwistedBilayerGraphene(theta_deg=1.05, w=-0.1)
+
+
+class TestC3SymmetryConvergence:
+    """C₃ 对称性的截断收敛（复测记录，2026-10-14 定论）。
+
+    物理低能带的 C₃ 误差随平面波壳层**指数收敛**；全谱最大差恒定
+    ~3.3×10⁻² eV 由截断邻带（非物理态）主导——报告对称性误差时必须
+    限定低能带窗口，否则会被截断态污染（旧记录曾据此误报 C₃ 破缺）。
+    """
+
+    def test_c3_symmetry_convergence(self):
+        c, s = np.cos(2 * np.pi / 3), np.sin(2 * np.pi / 3)
+        R = np.array([[c, -s], [s, c]])
+        k = np.array([0.005, 0.002])
+        prev = None
+        for n in (4, 5, 6):
+            m = TwistedBilayerGraphene(theta_deg=1.05, n_shells=n)
+            E1 = np.linalg.eigvalsh(m.hamiltonian(k))
+            E2 = np.linalg.eigvalsh(m.hamiltonian(R @ k))
+            d = np.abs(E1 - E2)
+            central8 = d[len(d) // 2 - 4:len(d) // 2 + 4].max()
+            assert central8 < 1e-6                      # 低能带 C₃ 精确
+            if prev is not None:
+                assert central8 < prev * 1e-2           # 随壳层指数收敛
+            prev = central8
