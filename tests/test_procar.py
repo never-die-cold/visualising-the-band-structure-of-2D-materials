@@ -159,3 +159,44 @@ class TestErrors:
     def test_garbage_file(self):
         with pytest.raises(ValueError):
             parse_procar("this is not a procar file\n")
+
+
+class TestProjectedDos:
+    """投影态密度（PROCAR 的直接应用）。"""
+
+    def test_projected_dos_normalization(self):
+        """总谱面积 = 1（权重归一）；投影面积 = 所选分数（态数守恒）。"""
+        d = parse_procar(_make_procar())
+        out = d.projected_dos(sigma=0.05, e_min=-2.0, e_max=2.0,
+                              n_points=800)
+        de = out["energies"][1] - out["energies"][0]
+        # 归一化 k 权重下总谱积分 = 每胞带数 (fixture: 2 带)
+        assert out["total"].sum() * de == pytest.approx(2.0, rel=1e-4)
+
+        d_orb = ["dxy", "dyz", "dz2", "dxz", "dx2-y2"]
+        out2 = d.projected_dos(d_orb, ions=[0], sigma=0.05,
+                               e_min=-2.0, e_max=2.0, n_points=800)
+        w = d.weights / d.weights.sum()
+        expected = float((w * d.orbital_fraction(d_orb, ions=[0]).sum(axis=1)).sum())
+        assert out2["n_electrons_projected"] == pytest.approx(expected,
+                                                              rel=1e-3)
+
+    def test_projected_dos_sigma_scaling(self):
+        """σ 增大 → 谱更平滑（峰高下降、方差增大）。"""
+        d = parse_procar(_make_procar())
+        out1 = d.projected_dos(sigma=0.02, e_min=-2.0, e_max=2.0)
+        out2 = d.projected_dos(sigma=0.10, e_min=-2.0, e_max=2.0)
+        assert out2["total"].max() < out1["total"].max()
+
+    def test_projected_dos_uniform_weights_fallback(self):
+        """k 权重全零 → 退回均匀权重，不报错。"""
+        d = parse_procar(_make_procar())
+        d.weights[:] = 0.0
+        out = d.projected_dos(sigma=0.05)
+        assert out["total"].sum() > 0
+        assert np.isfinite(out["total"]).all()
+
+    def test_projected_dos_invalid_sigma(self):
+        d = parse_procar(_make_procar())
+        with pytest.raises(ValueError):
+            d.projected_dos(sigma=0.0)

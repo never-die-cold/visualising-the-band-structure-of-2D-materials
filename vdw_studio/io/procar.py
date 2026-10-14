@@ -22,8 +22,8 @@ PROCAR 是 VASP 输出的**投影系数**文件：每个 k 点、每条能带给
 - 轨道列名从 ``ion`` 表头行**动态读取**（支持含 f 轨道的 16 列格式）；
 - 每个 k 点/带的 ``tot`` 行单独保存（全系统轨道求和）。
 
-本模块只做解析与权重计算，不做可视化；数据类可直接喂给
-分析/绘图流程（详见 ``ProcarData.orbital_weights``）。
+本模块提供解析、权重计算与**投影态密度**（``projected_dos``，
+轨道/离子选择的态数守恒高斯展宽），不做可视化。
 """
 
 from __future__ import annotations
@@ -112,6 +112,54 @@ class ProcarData:
         order = np.argsort(per_orb)[::-1][:top]
         return [(self.orbital_names[i], float(per_orb[i] / total))
                 for i in order]
+
+    def projected_dos(self, orbitals: Optional[Sequence[str]] = None,
+                      ions: Optional[Sequence[int]] = None,
+                      sigma: float = 0.05, e_min: Optional[float] = None,
+                      e_max: Optional[float] = None, n_points: int = 400,
+                      use_k_weights: bool = True) -> dict:
+        """轨道/离子投影态密度（高斯展宽，投影能带的直接应用）。
+
+        定义（与 ``solver.solve_dos`` 的高斯展宽约定一致）::
+
+            total(E)     = Σ_{k,b} w_k · G_σ(E − ε_{kb})
+            projected(E) = Σ_{k,b} w_k · p_{kb} · G_σ(E − ε_{kb})
+
+        其中 p_{kb} 为所选轨道/离子的**归一化分数**（见
+        :meth:`orbital_fraction`），w_k 为 k 点权重（默认使用，
+        全零时退回均匀权重）。
+
+        返回:
+            dict(energies, total, projected, n_electrons_projected)
+            —— projected 的积分 ≈ 所选轨道/离子的态数贡献。
+        """
+        if sigma <= 0:
+            raise ValueError("σ 必须为正")
+        frac = self.orbital_fraction(orbitals, ions)
+        w = self.weights.astype(float).copy() if use_k_weights             else np.ones(self.n_kpoints)
+        if w.sum() <= 0:
+            w = np.ones(self.n_kpoints)
+        w = w / w.sum()
+        if e_min is None:
+            e_min = float(self.energies.min()) - 10 * sigma
+        if e_max is None:
+            e_max = float(self.energies.max()) + 10 * sigma
+        grid = np.linspace(e_min, e_max, n_points)
+        total = np.zeros(n_points)
+        projected = np.zeros(n_points)
+        pref = 1.0 / (sigma * np.sqrt(2 * np.pi))
+        for ik in range(self.n_kpoints):
+            de = grid[:, None] - self.energies[ik][None, :]     # (n_E, nb)
+            g = pref * np.exp(-0.5 * (de / sigma) ** 2)
+            total += w[ik] * g.sum(axis=1)
+            projected += w[ik] * (g * frac[ik][None, :]).sum(axis=1)
+        return {
+            "energies": grid,
+            "total": total,
+            "projected": projected,
+            "n_electrons_projected": float(
+                projected.sum() * (grid[1] - grid[0])),
+        }
 
     def _orbital_indices(self, orbitals: Optional[Sequence[str]]) -> list:
         if orbitals is None:
