@@ -145,19 +145,44 @@ MoS₂ > WS₂ > MoSe₂ > WSe₂ 复现。势形式与 Berkelbach Eq. (1)
 hBN 可取 Olsen et al. 或 Latini et al. 的 χ₂D；graphane 需
 Cudazzo 正文之外的补充材料）。
 
-## 待确认的约定（欢迎提供文献）
+## sp³d⁵ 引擎状态（2026-10-14 复核，几何/填充已定，SK 约定待定）
 
-1. **Nanoskif SK 方向/相位约定**（阻塞 Zahid sp³d⁵ 引擎的带隙验证）：
-   Zahid 2013 论文只给出 96 个拟合参数值，未写明其 Slater-Koster 表的
-   键方向约定与轨道相位约定（Nanoskif 软件内部约定）。当前实现已达成：
-   H(k)/S(k) 厄米、S(k) 正定（Gram 判据）、泛函本征值可解；
-   但带隙数值与文献目标（单层 K 点 1.805 eV）尚未吻合（当前 ~4.2 eV），
-   提示相位约定仍有系统差异。需要以下任一材料确认约定：
-   - Zahid F. 的博士论文（香港大学，含 Nanoskif sp³d⁵ 模型细节）；
-   - Nanoskif / NEMO-3D 的 sp³d⁵s* 模型文档：
-     G. Klimeck et al., *IEEE Trans. Electron Devices* / J. Comput. Electron.
-     中 NEMO 3-D 系列论文的 SOC 与 SK 约定附录；
-   - 或任何给出 sp³d⁵ Slater-Koster 完整角因子表（含 d-d 交叉项）的
-     教材/文献（如 Papaconstantopoulos《Handbook of the Band Structure of
-     Elemental Solids》附录）。
-   拿到后即可完成该引擎并通过 1.805/1.969 eV 带隙验证。
+**已独立核实并修正两项**（不依赖 Nanoskif 约定）：
+
+1. **几何——三棱柱 vs 八面体（已修正，真实 bug）**：1H 相 MoS₂ 的
+   Mo 为**三棱柱配位**（上下 S 三角形对齐、两 S 同一面内空位），
+   此前实现把两 S 放在 (1/3,2/3)/(2/3,1/3) 两个不同空位——
+   60° 交错排列 = **八面体（1T 型）几何**，晶体场给反。
+   核实来源：Wikipedia "Molybdenum disulfide"（"each molybdenum
+   atom exists at the center of a trigonal prismatic coordination
+   sphere"）+ 2H 体相 P6₃/mmc（Mo 2c / S 4f）坐标的独立距离验算
+   （Acta Cryst. B39, 404 (1983) 数据）。已修正
+   `structure/builders.py::tmd/tmd_bilayer` 与 `engine/zahid_mos2.py`
+   的位点；键长（2.41 Å）与层间 S–S vdW 距离（3.49 Å）锚点均保持。
+   **注意：修正改变了 TMD 的 POSCAR/XYZ 导出与结构图（S 方位）**。
+2. **中性填充（已确认）**：Mo (4d⁵5s¹) + 2×S (3s²3p⁴) = **18 电子/胞**；
+   含 SOC 时 54 态占 18（此前预设假设的"半填 27"错误，已改）。
+   Γ 点 27 号态的简并线索即由半填假设引起。
+
+**仍待确认：Nanoskif 的 Slater-Koster 表约定**（阻塞带隙验证）。
+现实现下 K 点晶体场顺序反转：带顶为 e′ 型 d_yz/d_zx（正确应为
+e 型 d_x²−y²/d_xy，m=±2）；修正几何下 E[18]−E[17] ≈ 0.98 eV
+（无 SOC，文献目标 ~1.9，含 SOC 1.805）。
+
+已系统扫描的装配自由度（均不能同时满足"带顶 m=±2 主导 + 带隙
+接近目标"）：
+- 异种对角色互换（spσ↔psσ 用法）×2；
+- 通道族符号翻转（π/δ/奇宇称/pσ/dσ/dd 及其 2⁶ 组合）；
+- S–Mo 块单/双通道符号翻转 106 组合。
+
+**关键线索**：π 通道族整体翻转可恢复**正确的带顶字符**
+（m=±2 权重 0.74），但带隙仍偏低（0.76 eV）——指向 π 通道的
+双中心坐标系约定（η_ij 型轨道框架旋转：第二原子局部框架旋转
+180° 的一类约定），该自由度不能表达为逐通道符号翻转。
+需要文献：Zahid 博士论文 / Klimeck NEMO-3D 文档 /
+Papaconstantopoulos《Handbook》（含完整 d-d 角因子表与框架约定）。
+
+**验收门槛（T16）**：拿到约定后对账 K_v1→K_c = 1.805 eV、
+K_v2→K_c = 1.969 eV（劈裂 0.164 eV）、m_e* ≈ 0.43 m₀、
+m_h* ≈ 0.463 m₀；当前数值在 GUI/CLI/文档中一致标为
+"实验性/不得作定量参考"。

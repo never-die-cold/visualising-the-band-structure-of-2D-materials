@@ -35,7 +35,10 @@ vdW Studio 内置材料结构库与多种仿真引擎，不依赖外部第一性
     调控带隙）、黑磷烯（Rudenko 四带模型，各向异性）
   - **TMD k·p 引擎**：K/-K 谷大质量 Dirac + 三角翘曲 + 自旋轨道（6 种材料
     全套文献参数，含 DFT 与 GW 两套带隙）
-  - **sp³d⁵ Slater-Koster 非正交引擎**（MoS₂ 全 BZ，96 参数，开发中）
+  - **sp³d⁵ Slater-Koster 非正交引擎**（MoS₂ 全 BZ，96 参数，实验性）：
+    几何（1H 三棱柱配位）与中性填充（18 电子/胞）已独立核实并修正，
+    S(k) 正定可解；带隙/能级顺序待 Nanoskif 表约定对账（见
+    [REFERENCES](../docs/REFERENCES.md)），当前数值不得作定量参考
 - **性质分析** — 带隙（直接/间接判据 + 高对称点标注）、有效质量（任意方向）、
   主质量（曲率张量本征分解，各向异性特征量）、费米速度
   （[坐标/方向与步长约定](../docs/DERIVATIVE_COORDINATES.md)；默认方向为倒格基矢组合）
@@ -133,7 +136,7 @@ python examples/export_all_structures.py  # 全部材料结构导出
 | WSe₂ | k·p | 1.300 eV (K) | 1.300 eV | 2Δ_vb = 466 meV |
 | MoTe₂ | k·p | 0.997 eV (K) | 0.997 eV | |
 | WTe₂ | k·p | 0.792 eV (K) | 0.792 eV | |
-| MoS₂ (sp³d⁵) | SK 非正交 | 待验证 | 1.805 eV | 框架就绪，待 Nanoskif 相位约定（见 ROADMAP） |
+| MoS₂ (sp³d⁵) | SK 非正交 | 待验证（实验性） | 1.805 eV | 几何/填充已核实修正（2026-10-14）；带隙待 Nanoskif 表约定（见 REFERENCES） |
 | 转角双层石墨烯 | 实验性 BM | 待分级验证 | — | 局部锚点通过；全域对称性/截断收敛待 T16 |
 
 ---
