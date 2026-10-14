@@ -215,7 +215,7 @@ _register(MaterialPreset(
         mu_over_m0=_mu, r0_angstrom=2.0 * np.pi * _chi,
         eb_ref=(_eb, 0.10), source=_BERKELBACH_SOURCE),
     source="Zahid et al., AIP Advances 3, 052111 (2013) Table 3（96 参数）",
-    tags=["全BZ", "量子输运级"],
+    tags=["全BZ", "实验性（待 SK 表约定对账）"],
 ))
 
 

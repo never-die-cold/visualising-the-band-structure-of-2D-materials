@@ -114,7 +114,7 @@ def simulate(model, n_per_segment: int = 40,
         path_gap = analyze_path_gap(model, kpath, n_per_segment=n_per_segment,
                                    n_valence=n_valence, band=band)
         if isinstance(model, ZahidMoS2Model):
-            log("实验性 SK：仅报告路径带隙，尚未完成全区模型验证")
+            log("实验性 SK：几何/填充已核实；带隙/能级顺序未与文献对账，不得作定量参考（见 docs/REFERENCES.md）")
             gap = path_gap
         else:
             log("搜索全布里渊区带边…")
