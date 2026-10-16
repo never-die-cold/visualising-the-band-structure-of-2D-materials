@@ -266,3 +266,18 @@ class TestKnownIssue:
         e = m.bands([(1 / 3, 1 / 3)])
         assert e.shape == (1, 54)
         assert np.all(np.diff(e[0]) >= -1e-10)   # 升序
+
+    def test_energies_at_shares_overlap_diagnostic(self, monkeypatch):
+        """energies_at 与 bands 共用 S(k) 正定诊断。
+
+        此前 energies_at 缺该检查，非正定 S(k) 会在 LAPACK 深处以
+        无上下文的报错失败；而 analyze_gap / effective_mass 走的正是
+        energies_at。
+        """
+        m = ZahidMoS2Model(soc=False)
+        H, S = m.hamiltonian_overlap([1 / 3, 1 / 3, 0.0])
+        monkeypatch.setattr(m, "hamiltonian_overlap", lambda k: (H, -S))
+        with pytest.raises(RuntimeError, match="非正定"):
+            m.energies_at([1 / 3, 1 / 3, 0.0])
+        with pytest.raises(RuntimeError, match="非正定"):
+            m.bands([[1 / 3, 1 / 3, 0.0]])

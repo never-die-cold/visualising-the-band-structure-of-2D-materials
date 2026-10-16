@@ -150,3 +150,19 @@ class TestApi:
             solve_transport(model, n_cm2=1e12, tau_fs=0.0)
         with pytest.raises(ValueError):
             solve_transport(model, n_cm2=1e12, n_mesh=4)
+
+    @pytest.mark.parametrize("kwargs", [
+        {"n_cm2": float("nan")}, {"n_cm2": float("inf")},
+        {"tau_fs": float("nan")}, {"temperature": float("nan")},
+        {"tau_fs": float("inf")}, {"g_spin": float("nan")},
+    ])
+    def test_non_finite_params_are_rejected(self, kwargs):
+        """NaN 与任何值的比较都为假，会穿过朴素范围校验并算出 NaN 结果。"""
+        with pytest.raises(ValueError):
+            solve_transport(PhosphoreneRudenko(), **{"n_cm2": 1e12, **kwargs})
+
+    def test_unattainable_density_is_rejected(self):
+        """密度超出网格可达范围必须报错，不得静默收敛到二分区间端点。"""
+        with pytest.raises(ValueError, match="可达范围"):
+            solve_transport(PhosphoreneRudenko(), n_cm2=1e16,
+                            tau_fs=10.0, temperature=300.0, n_mesh=16)

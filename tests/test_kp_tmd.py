@@ -141,3 +141,21 @@ class TestSources:
     def test_unknown_material(self):
         with pytest.raises(ValueError):
             TMDKpParams.from_library("GaAs")
+
+    def test_source_variants_and_unknown_values(self):
+        """大小写/空白容错；其余未知值必须拒绝，不得静默当作 DFT。"""
+        gw = TMDKpParams.from_library("MoS2", "gw")
+        assert TMDKpParams.from_library("MoS2", " GW ").e_bg == pytest.approx(gw.e_bg)
+        for bad in ("lda", "dft2", "", "gw+dft"):
+            with pytest.raises(ValueError, match="source"):
+                TMDKpParams.from_library("MoS2", bad)
+
+
+class TestEffectiveMassInput:
+    @pytest.mark.parametrize("direction", [(0.0, 0.0), (float("nan"), 1.0),
+                                           (float("inf"), 0.0), (1.0,)])
+    def test_rejects_degenerate_direction(self, direction):
+        """零/非有限/维度不符的方向会给出 NaN 质量，必须显式拒绝。"""
+        m = TMDKpModel(TMDKpParams.from_library("MoS2", "dft"))
+        with pytest.raises(ValueError):
+            m.effective_mass("cb", +1, +1, direction=direction)

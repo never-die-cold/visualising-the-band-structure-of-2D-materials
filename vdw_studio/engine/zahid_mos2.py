@@ -362,19 +362,26 @@ class ZahidMoS2Model:
         kfracs = np.asarray(kfracs, float)
         out = np.empty((len(kfracs), self.n_basis))
         for ik, kf in enumerate(kfracs):
-            H, S = self.hamiltonian_overlap(kf)
-            wS = np.linalg.eigvalsh(S)
-            if wS.min() < -1e-8:
-                raise RuntimeError(
-                    f"S(k) 非正定 (min eig = {wS.min():.4g} @ k={kf})："
-                    "SK 方向/相位约定与拟合参数不匹配，结果无定义。"
-                    "见 docs/REFERENCES.md 中 'Nanoskif SK 约定' 待办。")
-            out[ik] = scipy.linalg.eigh(H, S, eigvals_only=True)
+            out[ik] = self._generalized_eigh(kf)
         return out
 
-    def energies_at(self, kfrac) -> np.ndarray:
+    def _generalized_eigh(self, kfrac) -> np.ndarray:
+        """单个 k 点的广义本征值，附 S(k) 正定诊断。
+
+        ``bands`` 与 ``energies_at`` 共用——此前 ``energies_at`` 缺该检查，
+        非正定 S(k) 会在 LAPACK 深处以无上下文的报错失败。
+        """
         H, S = self.hamiltonian_overlap(kfrac)
+        wS = np.linalg.eigvalsh(S)
+        if wS.min() < -1e-8:
+            raise RuntimeError(
+                f"S(k) 非正定 (min eig = {wS.min():.4g} @ k={kfrac})："
+                "SK 方向/相位约定与拟合参数不匹配，结果无定义。"
+                "见 docs/REFERENCES.md 中 'Nanoskif SK 约定' 待办。")
         return scipy.linalg.eigh(H, S, eigvals_only=True)
+
+    def energies_at(self, kfrac) -> np.ndarray:
+        return self._generalized_eigh(kfrac)
 
     def __repr__(self) -> str:
         return (f"ZahidMoS2Model(a={self.a}, dxx={self.dxx}, "

@@ -35,6 +35,8 @@ from typing import Dict, Optional
 
 import numpy as np
 
+from ..numerics import finite_vector
+
 # ħ²/(2m₀) = 3.809982 eV·Å²
 HBAR2_OVER_2M0 = 3.809982
 
@@ -128,8 +130,11 @@ class TMDKpParams:
         lookup = {k.lower(): k for k in TMD_KP_PARAMS}
         if key not in lookup:
             raise ValueError(f"未知 TMD {name!r}，可选: {sorted(TMD_KP_PARAMS)}")
+        source_key = str(source).strip().lower()
+        if source_key not in ("dft", "gw"):
+            raise ValueError(f"source 必须为 'dft' 或 'gw'，收到 {source!r}")
         p = dict(TMD_KP_PARAMS[lookup[key]])
-        use_gw = source.lower() == "gw"
+        use_gw = source_key == "gw"
         e_bg = p.pop("e_bg_gw" if use_gw else "e_bg_dft")
         gamma = p.pop("gamma_gw" if use_gw else "gamma_dft")
         p.pop("e_bg_dft" if use_gw else "e_bg_gw")
@@ -230,8 +235,11 @@ class TMDKpModel:
         """
         if band not in ("cb", "vb"):
             raise ValueError("band 必须为 'cb' 或 'vb'")
-        d = np.asarray(direction, dtype=float)
-        d = d / np.linalg.norm(d)
+        d = finite_vector(direction, 2, 'direction')
+        norm = float(np.linalg.norm(d))
+        if norm == 0:
+            raise ValueError("direction 不得为零向量")
+        d = d / norm
         col = 0 if band == "vb" else 1
         e0 = self.spin_block_energies((0.0, 0.0), valley, spin)[col]
         ep = self.spin_block_energies(d * dq, valley, spin)[col]

@@ -48,7 +48,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..numerics import resolve_n_valence
+from ..numerics import finite_scalar, integer, resolve_n_valence
 
 # 物理常数（SI）
 _E_CHARGE = 1.602176634e-19     # C
@@ -93,10 +93,14 @@ def solve_transport(model, n_cm2: float, tau_fs: float = 10.0,
     返回:
         :class:`TransportResult`
     """
+    # NaN 与任何值的比较都为假，会穿过朴素的范围校验并一路算出 NaN 结果。
+    n_cm2 = finite_scalar(n_cm2, 'n_cm2')
+    tau_fs = finite_scalar(tau_fs, 'tau_fs', positive=True)
+    temperature = finite_scalar(temperature, 'temperature', positive=True)
+    g_spin = finite_scalar(g_spin, 'g_spin', positive=True)
+    n_mesh = integer(n_mesh, 'n_mesh', minimum=8)
     if n_cm2 == 0:
         raise ValueError("载流子密度不能为零")
-    if tau_fs <= 0 or temperature <= 0 or n_mesh < 8:
-        raise ValueError("τ、T 必须为正且网格 ≥ 8")
 
     B = model.lattice.reciprocal_matrix[:2, :2]   # 行 = b1, b2 (Å⁻¹)
     a_bz_m2 = abs(np.linalg.det(B)) * 1e20        # BZ 面积 (m⁻²)
@@ -108,6 +112,8 @@ def solve_transport(model, n_cm2: float, tau_fs: float = 10.0,
     E = model.bands(np.stack([kf1.ravel(), kf2.ravel()], axis=1))  # (N², nb)
     nb = E.shape[1]
     n_val = resolve_n_valence(model, nb, n_valence)
+    if not np.isfinite(E).all():
+        raise ValueError("模型返回的网格能量含非有限值")
 
     # ---- 速度：网格邻点中心差分（周期），抛物线带严格精确 -------------
     # ∂ε/∂kfrac_j = ±邻差×N/2；∂ε/∂q = B⁻¹·∂ε/∂kfrac（q = kfrac·B 行约定）
@@ -137,6 +143,14 @@ def solve_transport(model, n_cm2: float, tau_fs: float = 10.0,
 
     n_target = n_cm2 * 1e4                        # m⁻²
     lo, hi = float(E.min()) - 1.0 - 20 * kbT, float(E.max()) + 1.0 + 20 * kbT
+    # 括号检查：密度超出网格可达范围时，二分法会静默收敛到区间端点并报出
+    # 一个看似合理的费米能级与迁移率。先确认目标确实被 [lo, hi] 夹住。
+    n_lo, n_hi = excess(lo), excess(hi)
+    if not n_lo < n_target < n_hi:
+        raise ValueError(
+            f"载流子密度 {n_cm2:g} cm⁻² 超出该网格可达范围 "
+            f"({n_lo / 1e4:.4g} … {n_hi / 1e4:.4g} cm⁻²)；"
+            "调大 n_mesh 或改用范围内的密度")
     for _ in range(200):
         mid = 0.5 * (lo + hi)
         if excess(mid) < n_target:
