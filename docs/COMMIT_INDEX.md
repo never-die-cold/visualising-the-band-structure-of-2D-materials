@@ -73,5 +73,7 @@ T15 之后的科研推进（T16/T17 门槛轮次）与本轮复核不在上表�
 | 47 | `68e0eba` | perf(bandviz): reuse plot artists, coalesce config writes and cache the parsed DOSCAR |
 | 48 | `ebabdbf` | docs: reconcile T16 status and local paths; collect the transport reference and drop stale artifacts |
 | 49 | `93ce315` | test(sk): freeze the assembly-convention negative result and add a criterion table |
+| 50 | `ab750a3` | docs(studio): register the SK convention criterion script in the example list |
+| 51 | `620313f` | docs(sk): record the literature check — the Nanoskif manual is the only path |
 
 本轮验收：本机 Windows / Python 3.12 完整套件 **708 项通过**（T15 收束时为 641 项）。复核发现的问题、文件处置与未处理项见 [项目检查计划](PROJECT_REVIEW_PLAN.md) 的「2026-10-17 改进轮次」节。
