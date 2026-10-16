@@ -1,6 +1,6 @@
 # 文档索引
 
-本次工程改进完成至 T15；T16 科研模型验证与 T17 后续扩展保留待办。两个应用的入口分别见 [BandViz](../README.md) 与 [vdW Studio](../vdw_studio/README.md)。
+工程改进完成至 T15，其后的 T16/T17 门槛轮次与 2026-10-17 改进轮次见 [检查计划](PROJECT_REVIEW_PLAN.md)；两个应用的入口分别见 [BandViz](../README.md) 与 [vdW Studio](../vdw_studio/README.md)。
 
 | 使用场景 | 文档 | 内容 |
 |---|---|---|
@@ -20,4 +20,4 @@
 | 规划研究扩展 | [路线图](ROADMAP.md) | 中长期物理模型与独立基准要求 |
 | 定位版本改动 | [提交索引](COMMIT_INDEX.md) | 本次按主题拆分的实际提交与最终验证 |
 
-本地最终验证为 Windows / Python 3.12 的 641 项测试通过。CI 已配置 Windows/Linux × Python 3.12/3.13；远端矩阵结果需查看实际运行。教学输入、历史论文插图与 SK/BM 科研验证的限制分别在对应文档中说明。
+本地最终验证为 Windows / Python 3.12 的 708 项测试通过（2026-10-17 复核；T15 收束时为 641 项）。CI 已配置 Windows/Linux × Python 3.12/3.13；远端矩阵结果需查看实际运行。教学输入、历史论文插图与 SK/BM 科研验证的限制分别在对应文档中说明。

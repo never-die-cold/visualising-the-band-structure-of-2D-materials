@@ -61,3 +61,17 @@
 | 42 | [`20fa71abab`](https://github.com/never-die-cold/visualising-the-band-structure-of-2D-materials/commit/20fa71abab) | docs(review): record T01 through T15 acceptance and final verification |
 | 43 | [`08109f196e`](https://github.com/never-die-cold/visualising-the-band-structure-of-2D-materials/commit/08109f196e) | docs: organize application and numerical contracts in a shared index |
 | 44 | 最后一条文档提交（包含本文件） | docs(delivery): index T15 topic commits and final verification |
+
+## 2026-10-17 改进轮次（复核后五批推进）
+
+T15 之后的科研推进（T16/T17 门槛轮次）与本轮复核不在上表内，其状态见 [项目检查计划](PROJECT_REVIEW_PLAN.md)。本轮按主题拆分为 5 条提交，范围不含科研模型参数调整；以下 hash 为本地提交，未推送前不含远端链接。
+
+| 序号 | 提交 | 改动主题 |
+|---|---|---|
+| 45 | `dbb7e38` | fix(engine): derive the Fermi reference from declared valence filling |
+| 46 | `45ffca9` | fix(analysis): reject non-finite and unattainable inputs in solver paths |
+| 47 | `68e0eba` | perf(bandviz): reuse plot artists, coalesce config writes and cache the parsed DOSCAR |
+| 48 | `ebabdbf` | docs: reconcile T16 status and local paths; collect the transport reference and drop stale artifacts |
+| 49 | `93ce315` | test(sk): freeze the assembly-convention negative result and add a criterion table |
+
+本轮验收：本机 Windows / Python 3.12 完整套件 **708 项通过**（T15 收束时为 641 项）。复核发现的问题、文件处置与未处理项见 [项目检查计划](PROJECT_REVIEW_PLAN.md) 的「2026-10-17 改进轮次」节。
