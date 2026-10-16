@@ -82,7 +82,7 @@
    - 用途：MoS₂/MoSe₂/WS₂/WSe₂ 激子默认参数（Table：μ = 0.25/0.27/0.16/0.17 m₀，
      χ₂D = 6.60/8.23/6.03/7.18 Å，变分束缚能 0.54/0.47/0.50/0.45 eV）；
      Keldysh 势形式 V = πe²/((ε₁+ε₂)ρ₀)[H₀−Y₀] 与本模块逐项一致。
-   - 验证：精确 DVR 解 ≥ 变分下界且偏差 ≤10%（`tests/test_exciton.py`）。
+   - 验证：精确 DVR 解 ≥ 变分下界（变分值为基态上界）且偏差 ≤10%，实测偏差 2–5%（`tests/test_exciton.py`；ROADMAP 与检查计划引用的是实测区间，两者不冲突）。
 
 8. **Bistritzer & MacDonald 2011（转角双层石墨烯连续模型）**
    R. Bistritzer, A. H. MacDonald,
@@ -114,7 +114,7 @@
 
 ## 规划采用（待引入）
 
-9. **Cudazzo, Tokatly & Rubio 2011（二维屏蔽势原始推导）**
+10. **Cudazzo, Tokatly & Rubio 2011（二维屏蔽势原始推导）**
    P. Cudazzo, I. V. Tokatly, A. Rubio,
    "Dielectric screening in two-dimensional insulators: Implications for excitonic and
    impurity states in graphane",
@@ -181,12 +181,15 @@ e 型 d_x²−y²/d_xy，m=±2）；修正几何下 E[18]−E[17] ≈ 0.98 eV
 
 **同亚层「± 镜像 + 共轭填充」复核（2026-10-14 负结果）**：
 曾怀疑 3 镜像 + 共轭填充约定对奇宇称通道（s-p、p-d 类在
-R̂→−R̂ 下变号）有隐含错误，遂试验「全 6 镜像显式列出、不做填充」：
-结果 H 非厄米（max|H−H†| = 1.7 eV）且 S 结构变化。原因：Zahid 表的
+R̂→−R̂ 下变号）有隐含错误，遂试验**同亚层**「全 6 镜像显式列出、
+不做共轭填充」（S–Mo 六键本就是显式列出的真实近邻，保持不变）：
+结果 H 非厄米（K 点 max|H−H†| ≈ 1.72 eV）且 S(k) 不再厄米。原因：Zahid 表的
 E_spσ 与 E_psσ 是**独立拟合参数**（0.6656 vs −1.6515，不是相反数），
 因此"物理宇称交换关系"不适用于拟合表——共轭填充（H_bа = H_ab†）
 是使模型厄米的必要装配选择，现实现（3 镜像 + 填充）在此意义上正确。
 剩余约定差异必在 Nanoskif 的装配/框架约定内部。
+该负结果自 2026-10-17 起可由 `ZahidMoS2Model(mirror_images=SIX_MIRROR_IMAGES,
+conjugate_fill=False)` 重跑，回归见 `tests/test_zahid_mos2.py::TestKnownIssue`。
 
 需要文献：Zahid 博士论文 / Klimeck NEMO-3D 文档 /
 Papaconstantopoulos《Handbook》（含完整 d-d 角因子表与框架约定）。

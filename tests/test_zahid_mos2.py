@@ -3,13 +3,15 @@
 已验证内容：
 - SK 角因子：轴向闭合式与求和规则（与 Slater-Koster 1954 一致）；
 - 键几何：Mo–S 6 键（键长 2.414 Å）+ 同亚层 S–S/Mo–Mo 各 6 键；
-- H(k)、S(k) 厄米性；
+- H(k)、S(k) 厄米性；S(k) 正定（2026-10-14 复验）；
 - on-site SOC 的 L·S 多重态结构（p: λ/2 与 −λ；d: λ 与 −1.5λ）；
-- 参数转录抽查（对照 arXiv:1304.0074 Table 3）。
+- 参数转录抽查（对照 arXiv:1304.0074 Table 3）；
+- 中性填充 18 电子/胞（2026-10-14 确认，原"半填 27"为错误假设）；
+- 装配约定负结果：同亚层显式 6 镜像且不共轭填充 → H 非厄米（已固化）。
 
-已知问题（见 docs/REFERENCES.md "待确认的约定"）：拟合重叠积分的
-Nanoskif 相位约定未在原文给出，S(k) 正定性未达成，`bands()` 对非正定
-S(k) 显式抛错；带隙验证（1.805/1.969 eV）待约定确认后进行。
+已知问题（见 docs/REFERENCES.md "待确认的约定"）：Nanoskif 的双中心
+坐标系约定未在原文给出，带隙/能级顺序尚未对账（目标 K_v1→K_c =
+1.805 eV，待约定确认后进行）；装配自由度扫描的负结果见 TestKnownIssue。
 """
 
 import numpy as np
@@ -25,6 +27,7 @@ from vdw_studio.engine.zahid_mos2 import (
     INTEGRALS_SS_H,
     INTEGRALS_SS_S,
     ONSITE,
+    SIX_MIRROR_IMAGES,
     ZahidMoS2Model,
     angular_momentum_matrices,
     onsite_soc,
@@ -281,3 +284,45 @@ class TestKnownIssue:
             m.energies_at([1 / 3, 1 / 3, 0.0])
         with pytest.raises(RuntimeError, match="非正定"):
             m.bands([[1 / 3, 1 / 3, 0.0]])
+
+    def test_six_mirror_sublayer_assembly_without_fill_is_not_hermitian(self):
+        """负结果固化（2026-10-14 复核；2026-10-17 参数化后可重跑）。
+
+        配置：同亚层 S–S/Mo–Mo **显式列出全部 6 个镜像且不做共轭填充**
+        （S–Mo 六键本就是显式列出的真实近邻，不受该开关影响）。结果
+        H(k) 非厄米——K 点 max|H−H†| ≈ 1.72 eV，S(k) 同时不再厄米。
+
+        原因：Zahid 表的 E_spσ = 0.6656 与 E_psσ = −1.6515 是**独立拟合
+        参数**而非相反数，因此"奇宇称通道在 R̂→−R̂ 下变号"的物理宇称交换
+        关系不适用于拟合表；共轭填充 H_ba = H_ab† 才是使拟合表厄米的必要
+        装配选择。剩余约定差异必在 Nanoskif 的双中心坐标系约定内部，不能
+        由逐通道符号翻转表达。此测试防止该分支被当作"修正"重新引入。
+        """
+        default = ZahidMoS2Model(soc=False)
+        H_ok, S_ok = default.hamiltonian_overlap([1 / 3, 1 / 3, 0.0])
+        assert np.abs(H_ok - H_ok.conj().T).max() == 0.0    # 默认装配严格厄米
+        assert np.abs(S_ok - S_ok.conj().T).max() == 0.0
+
+        six = ZahidMoS2Model(soc=False, mirror_images=SIX_MIRROR_IMAGES,
+                             conjugate_fill=False)
+        assert len(six.bonds) > len(default.bonds)          # 6 个近邻显式列出
+        H, S = six.hamiltonian_overlap([1 / 3, 1 / 3, 0.0])
+        assert np.abs(H - H.conj().T).max() == pytest.approx(1.717, abs=0.005)
+        assert np.abs(S - S.conj().T).max() > 0.1           # S 结构一并改变
+
+
+class TestConventionScan:
+    """判据表脚本（examples/sk_convention_scan.py）可重跑。"""
+
+    def test_reports_criteria_for_defined_variants(self):
+        from examples import sk_convention_scan as scan
+
+        report = scan.evaluate(scan.ZahidMoS2Model())
+        assert report["hermiticity_error"] == 0.0            # 厄米前置条件
+        assert report["overlap_min_eig"] > 0                 # S 正定前置条件
+        assert report["main_gap"] < scan.TARGET_MAIN_GAP     # 仍低于文献目标
+        assert report["m2_weight"] < 0.5                     # 带顶非 m=±2 主导
+
+        broken = scan.evaluate(scan.ZahidMoS2Model(
+            mirror_images=scan.SIX_MIRROR_IMAGES, conjugate_fill=False))
+        assert "note" in broken and "main_gap" not in broken

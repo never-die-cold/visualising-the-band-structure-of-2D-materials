@@ -47,6 +47,15 @@ import scipy.linalg
 from ..structure.lattice import Lattice
 from .slater_koster import ORBITAL_SHELL, _P_HAT, D_TENSORS, _perp_basis
 
+# 同亚层六方近邻（距离 a）的镜像选择。默认取每对 ±R 中的一个代表，
+# 配合共轭填充覆盖全部 6 近邻；这是使**拟合表**厄米的必要装配选择
+# （E_spσ = 0.6656 与 E_psσ = −1.6515 是独立参数而非相反数，物理宇称
+# 交换关系不适用）。显式列全 6 个且关闭同亚层填充会破坏厄米性——该
+# 负结果（K 点 max|H−H†| ≈ 1.72 eV）已固化为回归测试，配置见
+# tests/test_zahid_mos2.py::TestKnownIssue。
+DEFAULT_MIRROR_IMAGES = ((1, 0), (0, 1), (1, 1))
+SIX_MIRROR_IMAGES = ((1, 0), (0, 1), (1, 1), (-1, 0), (0, -1), (-1, -1))
+
 # ----------------------------------------------------------------------
 # Zahid 2013 Table 3 参数（eV，逐一转录自 arXiv:1304.0074）
 # ----------------------------------------------------------------------
@@ -244,11 +253,21 @@ class ZahidMoS2Model:
     n_valence = 18
 
     def __init__(self, a: float = 3.179, dxx: float = 3.135,
-                 soc: bool = True) -> None:
+                 soc: bool = True, *, mirror_images=None,
+                 conjugate_fill: bool = True) -> None:
+        """``mirror_images`` / ``conjugate_fill`` 只影响同亚层 S–S、Mo–Mo
+        近邻的装配方式，用于复现 2026-10-14 的装配约定复核（见模块文档与
+        ``docs/REFERENCES.md``）。S–Mo 的六个近邻本就是显式列出的真实键，
+        其共轭块 ⟨Mo|H|S⟩ = ⟨S|H|Mo⟩† 是厄米性的定义要求而非约定选择，
+        故不受这两个开关影响。
+        """
         self.lattice = Lattice.hexagonal(a, vacuum=self.VACUUM)
         self.a = a
         self.dxx = dxx
         self.soc = soc
+        self.mirror_images = (tuple(DEFAULT_MIRROR_IMAGES) if mirror_images is None
+                              else tuple((int(dx), int(dy)) for dx, dy in mirror_images))
+        self.conjugate_fill = bool(conjugate_fill)
         self.name = "MoS2 sp3d5 (Zahid 2013)"
         h = dxx / 2
         # 三棱柱配位：两个 S 同一面内空位 (1/3, 2/3)（上下对齐）
@@ -280,13 +299,12 @@ class ZahidMoS2Model:
                         count += 1
             assert count == 3, f"S{i} 的 Mo 近邻数 = {count} (应为 3)"
         # 同亚层 S–S、Mo–Mo 六近邻（面内距离 = a；γ=120° 六方格子）。
-        # 取 ± 对中的 3 个代表镜像，配合共轭填充即可覆盖全部 6 近邻
-        # 且保证 H(k)/S(k) 厄米（SK 矩阵元对 R̂ 含奇宇称通道）。
-        images = [(1, 0), (0, 1), (1, 1)]
+        # 默认取 ± 对中的代表镜像，配合共轭填充覆盖全部 6 近邻并保证
+        # H(k)/S(k) 厄米（SK 矩阵元对 R̂ 含奇宇称通道）。
         for i in (1, 2):
-            for dx, dy in images:
+            for dx, dy in self.mirror_images:
                 bonds.append((i, i, np.array([dx, dy, 0.0]), "SS"))
-        for dx, dy in images:
+        for dx, dy in self.mirror_images:
             bonds.append((0, 0, np.array([dx, dy, 0.0]), "MoMo"))
         return bonds
 
@@ -322,15 +340,15 @@ class ZahidMoS2Model:
 
         for (i, j, dfrac, kind) in self.bonds:
             if kind == "SMo":
-                # ⟨S|H|Mo⟩ 块 + 厄米共轭块 ⟨Mo|H|S⟩
+                # ⟨S|H|Mo⟩ 块 + 厄米共轭块 ⟨Mo|H|S⟩（厄米性的定义要求）
                 add_pair(i, j, dfrac, INTEGRALS_SMO_H, INTEGRALS_SMO_S,
                          1.0, symmetric=True)
             elif kind == "SS":
                 add_pair(i, j, dfrac, INTEGRALS_SS_H, INTEGRALS_SS_S,
-                         1.0, symmetric=True)
+                         1.0, symmetric=self.conjugate_fill)
             else:
                 add_pair(i, j, dfrac, INTEGRALS_MOMO_H, INTEGRALS_MOMO_S,
-                         1.0, symmetric=True)
+                         1.0, symmetric=self.conjugate_fill)
 
         # on-site 能量
         for atom, (sp, _) in enumerate(self.sites):
