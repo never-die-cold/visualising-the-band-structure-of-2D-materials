@@ -31,7 +31,7 @@ python -m pip install .
 bandviz
 ```
 
-程序启动后，左侧文件树会自动扫描 `data/example/` 下的示例数据。双击 **graphene** 或 **mos2** 即可加载并查看能带图与 DOS 图。
+从仓库根目录运行 `python main.py` 或 `bandviz` 时，左侧文件树会自动扫描 `data/example/` 下的示例数据（该路径相对当前工作目录）；从其它目录启动或安装为 wheel 后，请用 **Load EIGENVAL** 打开自己的数据。双击 **graphene** 或 **mos2** 即可加载并查看能带图与 DOS 图。
 
 ### 基本操作
 
@@ -94,8 +94,8 @@ BandViz 的带隙仅描述导入的 k 点。vdW Studio 的周期 TB 材料另使
 .
 ├── main.py                      # 程序入口
 ├── requirements.txt             # 依赖列表
-├── config/
-│   └── settings.json            # 旧配置位置；首次启动只读迁移
+├── config/                      # 本地旧配置位置（未入库）；首次启动只读迁移
+│   └── settings.json
 ├── core/                        # 核心计算
 │   ├── parser.py                # EIGENVAL / KPOINTS 解析
 │   ├── band_analyzer.py         # 能带分析（带隙、有效质量）

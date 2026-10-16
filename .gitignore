@@ -15,6 +15,7 @@ venv/
 env/
 .idea/
 .vscode/
+.zcode/
 *.log
 .DS_Store
 Thumbs.db
@@ -24,6 +25,10 @@ config/settings.json
 *.docx
 ~$*
 logs/
+# 个人一次性脚本（PROJECT_REVIEW_PLAN「个人未跟踪脚本未纳入提交」）
+edit_paper*.py
+# 旧版 screening 结果库；代码默认写入 results/screening.db
+screening.db
 
 # 文献源码 (本地参考, 不入库)
 papers/arxiv/
