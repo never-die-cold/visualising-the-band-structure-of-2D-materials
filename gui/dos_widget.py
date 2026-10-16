@@ -31,7 +31,11 @@ class DosWidget(QWidget):
 
     def set_energy_range(self, emin: float, emax: float):
         self.energy_range = (emin, emax)
-        self.draw()
+        if self.dos_data is None:
+            return
+        # 全量数据已绘制，窗口只由 ylim 控制 → 不必重建 artist
+        self.ax.set_ylim(emin, emax)
+        self.canvas.draw_idle()
 
     def set_visibility(self, total: bool = True, vb: bool = True, cb: bool = True):
         self.show_total = total
@@ -44,18 +48,12 @@ class DosWidget(QWidget):
             return
 
         self.ax.clear()
-        energies = self.dos_data.energies
-        total = self.dos_data.total_dos
-        vb = self.dos_data.vb_dos
-        cb = self.dos_data.cb_dos
-
-        # 在能量范围内切片
+        # 绘制全量数据；能量窗口由 set_ylim 控制，范围变化无需重绘
+        e_plot = self.dos_data.energies
+        t_plot = self.dos_data.total_dos
+        vb_plot = self.dos_data.vb_dos
+        cb_plot = self.dos_data.cb_dos
         emin, emax = self.energy_range
-        mask = (energies >= emin) & (energies <= emax)
-        e_plot = energies[mask]
-        t_plot = total[mask]
-        vb_plot = vb[mask] if vb is not None else None
-        cb_plot = cb[mask] if cb is not None else None
 
         # 绘制价带 DOS（蓝色填充）
         if self.show_vb and vb_plot is not None:

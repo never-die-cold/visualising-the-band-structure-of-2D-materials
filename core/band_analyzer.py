@@ -25,6 +25,7 @@ class BandAnalyzer:
         """
         self.data = band_data
         self.fermi_level = 0.0
+        self._gap_cache = None
         self.lattice_constant_angstrom = lattice_constant_angstrom
         self.zero_gap_tol = zero_gap_tol
         self.occupation_tol = occupation_tol
@@ -43,6 +44,23 @@ class BandAnalyzer:
         self.fermi_level = float(efermi)
 
     def get_band_gap(self) -> dict:
+        """Classify sampled k points using occupations, filling and crossings.
+
+        Occupations fix the physical filling; changing the display energy zero
+        does not change them. Fractional occupations without a resolved crossing
+        are indeterminate because smearing/fixed occupations can cause them.
+
+        Result is cached per Fermi level: one interaction (redraw + panel
+        update + mass fit) used to recompute the same gap three or four times.
+        """
+        cached = self._gap_cache
+        if cached is not None and cached[0] == self.fermi_level:
+            return dict(cached[1])
+        result = self._compute_band_gap()
+        self._gap_cache = (self.fermi_level, dict(result))
+        return dict(result)
+
+    def _compute_band_gap(self) -> dict:
         """Classify sampled k points using occupations, filling and crossings.
 
         Occupations fix the physical filling; changing the display energy zero

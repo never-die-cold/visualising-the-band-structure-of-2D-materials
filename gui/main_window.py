@@ -18,6 +18,11 @@ from storage.database import Database
 from storage.config_manager import ConfigManager
 from utils.logger import setup_logger
 
+# 交互防抖：合并 spinbox 连点，避免每按一步都重建整幅能带图（自旋夹具
+# 即 840 条线）或对配置文件做一次 fsync 原子写（树莓派 SD 卡上是 ms 级）。
+BAND_REFRESH_DEBOUNCE_MS = 60
+CONFIG_FLUSH_DEBOUNCE_MS = 400
+
 
 class MainWindow(QMainWindow):
     """主窗口：整合文件树、能带图、DOS 图、控制面板、持久化、日志、后台线程"""
@@ -86,6 +91,15 @@ class MainWindow(QMainWindow):
         self._dos_timer.timeout.connect(self._start_dos_refresh)
         self._cleanup_timer = QTimer(self)
         self._cleanup_timer.timeout.connect(self._cleanup_workers)
+        self._band_timer = QTimer(self)
+        self._band_timer.setSingleShot(True)
+        self._band_timer.timeout.connect(self._apply_band_refresh)
+        self._pending_band_fermi = None
+        self._pending_band_range = None
+        self._pending_config = {}
+        self._config_timer = QTimer(self)
+        self._config_timer.setSingleShot(True)
+        self._config_timer.timeout.connect(self._flush_config)
 
         # --- 恢复上次配置 ---
         self._restore_config()
@@ -98,11 +112,13 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         """关闭前保存窗口几何和配置"""
         self._closing = True
+        self._band_timer.stop()
         self.cancel_tasks()
         if any(w.isRunning() for w in self._workers):
             event.ignore()
             self._cleanup_timer.start(50)
             return
+        self._flush_config()
         self._persist_config(self.config.set, 'window_geometry', {
             'x': self.x(), 'y': self.y(),
             'width': self.width(), 'height': self.height()
@@ -345,34 +361,59 @@ class MainWindow(QMainWindow):
     # 控制面板回调
     # ------------------------------------------------------------------
     def set_fermi_level(self, efermi: float):
-        self.band_widget.set_fermi_level(efermi)
         if self.current_analyzer:
             self.current_analyzer.set_fermi_level(efermi)
             gap_info = self.current_analyzer.get_band_gap()
             self.control_panel.update_analysis(gap_info, self.current_analyzer.mass_fit_reports_at_gap())
+        self._pending_band_fermi = efermi
+        self._band_timer.start(BAND_REFRESH_DEBOUNCE_MS)
+        self._pending_config['fermi_level'] = efermi
+        self._config_timer.start(CONFIG_FLUSH_DEBOUNCE_MS)
         if self.current_dos_data is not None:
             # 重新计算 DOS（费米能级改变）
             self._update_dos()
-        self._persist_config(self.config.set, 'fermi_level', efermi)
 
     def set_energy_range(self, emin: float, emax: float):
         if emin >= emax:
             self.statusBar().showMessage('Energy minimum must be below maximum')
             return
-        self.band_widget.set_energy_range(emin, emax)
         self.dos_widget.set_energy_range(emin, emax)
-        self._persist_config(self.config.set_energy_range, emin, emax)
+        self._pending_band_range = (emin, emax)
+        self._band_timer.start(BAND_REFRESH_DEBOUNCE_MS)
+        self._pending_config['energy_range'] = {'min': emin, 'max': emax}
+        self._config_timer.start(CONFIG_FLUSH_DEBOUNCE_MS)
         self._update_dos()
 
     def set_dos_sigma(self, sigma: float):
         self._update_dos(sigma=sigma)
-        self._persist_config(self.config.set, 'dos_sigma', sigma)
+        self._pending_config['dos_sigma'] = sigma
+        self._config_timer.start(CONFIG_FLUSH_DEBOUNCE_MS)
 
     def set_dos_visibility(self, total: bool, vb: bool, cb: bool):
         self.dos_widget.set_visibility(total=total, vb=vb, cb=cb)
-        self._persist_config(self.config.set, 'dos_show_total', total)
-        self._persist_config(self.config.set, 'dos_show_vb', vb)
-        self._persist_config(self.config.set, 'dos_show_cb', cb)
+        # 三个标志合并为一次原子写（此前是三次独立写 + fsync）
+        self._pending_config.update({'dos_show_total': total,
+                                     'dos_show_vb': vb,
+                                     'dos_show_cb': cb})
+        self._config_timer.start(CONFIG_FLUSH_DEBOUNCE_MS)
+
+    def _apply_band_refresh(self):
+        """把防抖窗口内累积的能带刷新一次性应用。"""
+        if self._closing or self.current_data is None:
+            return
+        if self._pending_band_fermi is not None:
+            fermi, self._pending_band_fermi = self._pending_band_fermi, None
+            self.band_widget.set_fermi_level(fermi)
+        if self._pending_band_range is not None:
+            window, self._pending_band_range = self._pending_band_range, None
+            self.band_widget.set_energy_range(*window)
+
+    def _flush_config(self):
+        """把合并后的设置一次性落盘。"""
+        self._config_timer.stop()
+        pending, self._pending_config = self._pending_config, {}
+        if pending:
+            self._persist_config(self.config.update, pending)
 
     def _update_dos(self, sigma: float = None):
         if self.current_data is None or self._closing:

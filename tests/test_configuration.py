@@ -148,7 +148,9 @@ def test_future_database_schema_is_refused_without_downgrading(tmp_path, factory
 
 def test_gui_settings_write_failure_keeps_event_loop_and_close_functional(tmp_path, monkeypatch):
     from PyQt5.QtWidgets import QApplication
+    from PyQt5.QtTest import QTest
     from test_lifecycle import root_window
+    from gui.main_window import CONFIG_FLUSH_DEBOUNCE_MS
     from utils import atomic_io
     app = QApplication.instance() or QApplication([])
     window = root_window(tmp_path, monkeypatch)
@@ -158,9 +160,40 @@ def test_gui_settings_write_failure_keeps_event_loop_and_close_functional(tmp_pa
     monkeypatch.setattr(atomic_io.os, 'replace', failure)
     window.show()
     window.set_fermi_level(.2)
-    app.processEvents()
+    # 设置落盘已合并到防抖定时器，等待窗口结束后才真正写文件
+    QTest.qWait(CONFIG_FLUSH_DEBOUNCE_MS + 100)
     assert 'previous file retained' in window.statusBar().currentMessage()
     assert window.config.config_path.read_bytes() == previous
     window.close()
     app.processEvents()
     assert not window.isVisible()
+
+
+def test_gui_settings_changes_are_coalesced(tmp_path, monkeypatch):
+    """连续参数变化合并为一次落盘（此前每步 spinbox 都原子写 + fsync）。"""
+    from PyQt5.QtWidgets import QApplication
+    from PyQt5.QtTest import QTest
+    from test_lifecycle import root_window
+    from gui.main_window import CONFIG_FLUSH_DEBOUNCE_MS
+    app = QApplication.instance() or QApplication([])
+    window = root_window(tmp_path, monkeypatch)
+    writes = []
+    original = window.config.update
+    def record(updates):
+        writes.append(dict(updates))
+        return original(updates)
+    monkeypatch.setattr(window.config, 'update', record)
+    window.set_fermi_level(.1)
+    window.set_energy_range(-4., 4.)
+    window.set_dos_sigma(.2)
+    window.set_dos_visibility(total=False, vb=True, cb=False)
+    assert writes == []            # 防抖窗口内不落盘
+    QTest.qWait(CONFIG_FLUSH_DEBOUNCE_MS + 100)
+    assert len(writes) == 1        # 四次交互合并成一次写入
+    merged = writes[0]
+    assert merged['fermi_level'] == .1
+    assert merged['energy_range'] == {'min': -4., 'max': 4.}
+    assert merged['dos_sigma'] == .2
+    assert merged['dos_show_total'] is False and merged['dos_show_cb'] is False
+    window.close()
+    app.processEvents()

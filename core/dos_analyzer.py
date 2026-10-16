@@ -1,4 +1,5 @@
 """Normalized k-point spectra and VASP DOSCAR total DOS."""
+import copy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple
@@ -239,8 +240,13 @@ def load_spectrum(data, eigenval_path, *, fermi_level=0., energy_range=(-5., 5.)
     The UI's energy reference is absolute in EIGENVAL/DOSCAR units. Imported
     DOSCAR preserves its own EF metadata while shifting its energy axis to the
     requested display zero. No re-broadening of already-integrated DOSCAR.
+
+    A parsed DOSCAR is cached by (path, mtime, size): every sigma/Fermi/range
+    edit used to re-read and re-parse the whole file even though its content
+    cannot change without a reload.
     """
-    doscar = DoscarParser(Path(eigenval_path).parent / 'DOSCAR', cancel_check).parse() if eigenval_path else None
+    doscar = _load_doscar_cached(Path(eigenval_path).parent / 'DOSCAR',
+                                 cancel_check) if eigenval_path else None
     if doscar is None:
         return DosAnalyzer.from_band_data(data, fermi_level, state_capacity=state_capacity, cancel_check=cancel_check).calculate_dos(
             energy_range, num_points, sigma)
@@ -252,3 +258,30 @@ def load_spectrum(data, eigenval_path, *, fermi_level=0., energy_range=(-5., 5.)
     doscar.note += f'; file EF={doscar.fermi_level:g} eV; display zero={fermi_level:g} eV'
     doscar.fermi_level = float(fermi_level)
     return doscar
+
+
+_DOSCAR_CACHE = {}
+
+
+def _load_doscar_cached(filepath, cancel_check=None):
+    """Parse a DOSCAR once per file revision; return a private copy.
+
+    The block below rewrites the returned object in place (energy axis,
+    components, note), so a shared cache entry would be shifted again on the
+    next call. Copies are cheap next to re-reading the file.
+    """
+    filepath = Path(filepath)
+    try:
+        stat = filepath.stat()
+    except OSError:
+        return None
+    key = (str(filepath.resolve()), stat.st_mtime_ns, stat.st_size)
+    parsed = _DOSCAR_CACHE.get(key)
+    if parsed is None:
+        parsed = DoscarParser(filepath, cancel_check).parse()
+        if parsed is None:
+            return None
+        if len(_DOSCAR_CACHE) >= 4:
+            _DOSCAR_CACHE.clear()
+        _DOSCAR_CACHE[key] = parsed
+    return copy.deepcopy(parsed)

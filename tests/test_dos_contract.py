@@ -195,3 +195,33 @@ def test_model_dos_counts_actual_bands_and_explicit_spin(mesh, degeneracy):
 def test_invalid_model_dos_inputs_are_rejected(kwargs):
     with pytest.raises(ValueError):
         solve_dos(FlatModel(), **kwargs)
+
+
+def test_doscar_is_parsed_once_per_file_revision(tmp_path, monkeypatch):
+    """同一文件版本只解析一次，且返回私有副本。
+
+    刷新 σ/费米/范围此前每次都整份重读 DOSCAR；缓存后若共享对象，
+    ``note`` 会逐次追加、并发 worker 也会互相改写能量轴。
+    """
+    write_doscar(tmp_path)
+    calls = []
+    original = DoscarParser.parse
+    def counting(self):
+        calls.append(self.filepath)
+        return original(self)
+    monkeypatch.setattr(DoscarParser, 'parse', counting)
+    first = load_spectrum(data(), tmp_path / 'EIGENVAL', fermi_level=.5)
+    second = load_spectrum(data(), tmp_path / 'EIGENVAL', fermi_level=1.)
+    assert len(calls) == 1                      # 第二次命中缓存
+    np.testing.assert_allclose(second.energies, first.energies - .5)
+    assert first.note.count('display zero') == 1
+    assert second.note.count('display zero') == 1   # 副本：不累积
+
+
+def test_doscar_cache_follows_file_revision(tmp_path):
+    """文件被改写后必须重新解析（缓存键含 mtime 与大小）。"""
+    write_doscar(tmp_path)
+    first = load_spectrum(data(), tmp_path / 'EIGENVAL', fermi_level=0.)
+    write_doscar(tmp_path, spin=True)
+    second = load_spectrum(data(), tmp_path / 'EIGENVAL', fermi_level=0.)
+    assert not np.allclose(first.total_dos, second.total_dos)

@@ -205,3 +205,32 @@ def test_sampled_status_is_visible_without_false_indirect_annotation(app, energi
     finally:
         widget.close()
         panel.close()
+
+
+def test_fermi_and_range_refresh_reuse_artists(app):
+    """费米能级/能量范围变化只更新已有 artist，不重建整幅图。
+
+    此前每按一次 spinbox 都先 ax.clear() 再按 (带 × 段) 重新 ax.plot
+    （自旋夹具即 840 条线），在树莓派上是可感知的卡顿。
+    """
+    data = BandData(np.array([[0., 0, 0], [.25, 0, 0], [.5, 0, 0]]),
+                    np.array([0., .25, .5]),
+                    np.array([[-1., 2.], [-1.2, 1.8], [-1., 2.]]),
+                    2, 2, [(0, "Γ"), (2, "M")])
+    widget = BandStructureWidget()
+    try:
+        widget.set_data(data, BandAnalyzer(data))
+        curves = [line for line in widget.ax.lines
+                  if line.get_color() in ("blue", "darkorange")]
+        assert len(curves) == 2
+        artists, texts = list(widget.ax.lines), list(widget.ax.texts)
+        assert texts
+        widget.set_fermi_level(1.0)
+        widget.set_energy_range(-1.0, 1.0)
+        assert list(widget.ax.lines) == artists      # 同一批对象：未重建
+        assert list(widget.ax.texts) == texts
+        np.testing.assert_allclose(curves[0].get_ydata(), data.energies[:, 0] - 1.0)
+        np.testing.assert_allclose(curves[1].get_ydata(), data.energies[:, 1] - 1.0)
+        assert widget.ax.get_ylim() == pytest.approx((-1.0, 1.0))
+    finally:
+        widget.close()
