@@ -191,10 +191,35 @@ E_spσ 与 E_psσ 是**独立拟合参数**（0.6656 vs −1.6515，不是相反
 该负结果自 2026-10-17 起可由 `ZahidMoS2Model(mirror_images=SIX_MIRROR_IMAGES,
 conjugate_fill=False)` 重跑，回归见 `tests/test_zahid_mos2.py::TestKnownIssue`。
 
-需要文献：Zahid 博士论文 / Klimeck NEMO-3D 文档 /
-Papaconstantopoulos《Handbook》（含完整 d-d 角因子表与框架约定）。
+需要文献：**Nanoskif 用户参考手册**（NanoAcademic Technologies / 鸿之微科技，未公开发布，须向其索取）。2026-10-17 网络核查的结论：
+
+- 论文正文与 arXiv 源码（`papers/arxiv/zahid2013/`）均未提及方向余弦、
+  轨道排序、框架旋转或近邻枚举，且无补充材料。参数由 Nanoskif
+  （"Nanostructure Slater-Koster Integrals Fitting package"，NanoAcademic
+  开发、鸿之微代理）自动拟合生成；该工具从未公开发布（旧官网自述
+  "not yet released"，现产品线只剩 NanoDCAL/RESCU/QTCAD/LatticeMind）。
+- Nanoskif 自述"限制在由 Slater 和 Koster 最先提出的传统双中心近似中"，
+  并支持正交/非正交基、逐元素轨道基与可配置近邻壳层。这**不支持**
+  "非标准旋转轨道框架"的假设。
+- 相邻代码的 η 是 Harrison 键长标度指数而非框架旋转（QTCAD：
+  V(d) = V(d₀)(d₀/d)^η；NEMO-3D：t(s,p_x) = l'·V_spσ·(d₀/d)^η_spσ）。
+  此前记录的"η_ij 型轨道框架旋转"缺少来源，已按此更正。
+- NEMO-3D（arXiv:0901.1890）与 QTCAD 用的都是标准 SK54 方向余弦表，
+  但二者均为正交 sp³d⁵s* 模型，不能直接证明 2013 非正交表的装配。
+- Papaconstantopoulos《Handbook》与其 2003 年 J. Phys. 综述均被付费墙/
+  反爬阻断，未能阅读，不构成任何结论。Boykin–Klimeck PRB 69, 115201
+  (2004) 同样无法获取。
+- 未找到任何独立复现该参数表的后续论文（OpenAlex 全文检索 "Nanoskif" /
+  "1.805 eV MoS2 tight-binding" 只命中该论文本身与一篇自拟合参数的
+  博士论文）。
+- 表自身的结构性事实：S–Mo 块有 8 个独立积分（spσ 0.6656 与 psσ
+  −1.6515 等并非相反数），**无法在一次标准 SK54 方向余弦装配中全部
+  消费**；论文与可及的 Nanoskif 文档都没说明两种次序如何使用。结合
+  Nanoskif 文档化的多壳层（含 E1(S,S)、E1(Mo,Mo)、E2(S,S)）支持，
+  最可能的约定错配位置是**逐壳层的方向余弦/参数分配**——这是推断，
+  不是已文档化的规则。
 
 **验收门槛（T16）**：拿到约定后对账 K_v1→K_c = 1.805 eV、
 K_v2→K_c = 1.969 eV（劈裂 0.164 eV）、m_e* ≈ 0.43 m₀、
 m_h* ≈ 0.463 m₀；当前数值在 GUI/CLI/文档中一致标为
-"实验性/不得作定量参考"。
+"实验性/不得作定量参考"。对账入口：`python examples/sk_convention_scan.py`。
