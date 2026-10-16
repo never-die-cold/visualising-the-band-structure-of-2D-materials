@@ -118,6 +118,7 @@ python examples/run_moire.py          # 转角双层石墨烯 moiré 平带（�
 python examples/run_exciton.py        # 2D 激子束缚能（Keldysh 势）
 python examples/run_transport.py      # 黑磷烯各向异性输运（CRTA 迁移率）
 python examples/export_all_structures.py  # 全部材料结构导出
+python examples/sk_convention_scan.py # SK 装配约定判据表（T16 对账入口，不产图）
 ```
 
 ---
