@@ -15,6 +15,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
+from ..numerics import resolve_n_valence
 from .kpath import DISPLAY_SYMBOLS, KPath
 from .models import TightBindingModel
 
@@ -30,17 +31,22 @@ class BandStructure:
     tick_labels: List[str]       # 高对称点显示符号 (Γ/M/K/...)
     path: List[str]              # 高对称点名称序列
     energies: np.ndarray         # (N, n_bands) 能量 (eV)，每行升序
+    n_valence: Optional[int] = None   # 占据带数；None = 未知，按半填充估计
 
     @property
     def n_bands(self) -> int:
         return self.energies.shape[1]
 
     def fermi_level(self) -> float:
-        """以占据带顶估计费米能级（每位点 2 个自旋态）。
+        """占据带顶：第 ``n_valence`` 条带在路径上的最高值。
 
-        简单取法：价带顶 = 所有 k 点中第 (n_occ−1) 条带的最高值，
-        其中 n_occ = n_bands // 2（非自旋极化、每态双占据）。
+        ``n_valence`` 由求解器从模型声明或显式参数解析（见
+        :func:`vdw_studio.numerics.resolve_n_valence`）——非半填模型
+        （如 18/54 的 sp³d⁵）必须与带隙分析取同一基准。未声明时退回
+        半填充估计：第 (n_bands//2 − 1) 条带的最高值。
         """
+        if self.n_valence is not None:
+            return float(self.energies[:, self.n_valence - 1].max())
         n_occ = self.energies.shape[1] // 2
         if n_occ == 0:
             return float(self.energies.min())
@@ -76,13 +82,15 @@ def sample_bands(model, points, cancel_check=None):
 
 
 def solve_bands(model: TightBindingModel, kpath: KPath,
-                n_per_segment: int = 60, *, cancel_check=None) -> BandStructure:
+                n_per_segment: int = 60, *, n_valence: Optional[int] = None,
+                cancel_check=None) -> BandStructure:
     """沿 k 路径求解能带。
 
     参数:
         model: 紧束缚模型。
         kpath: k 路径（应与模型晶格匹配）。
         n_per_segment: 每段采样数。
+        n_valence: 占据带数；缺省取模型声明或半填充。
     """
     kcart, x_axis, ticks = kpath.generate(model.lattice, n_per_segment)
     # 直接按倒格分数坐标采样（哈密顿量相位约定使用分数坐标）
@@ -100,13 +108,15 @@ def solve_bands(model: TightBindingModel, kpath: KPath,
     return BandStructure(
         model_name=model.name, kpoints=kcart, x_axis=x_axis, ticks=ticks,
         tick_labels=labels, path=list(kpath.path), energies=energies,
+        n_valence=resolve_n_valence(model, energies.shape[1], n_valence),
     )
 
 
 def solve_dos(model: TightBindingModel, mesh: Tuple[int, int] = (48, 48),
               sigma: float = 0.05, n_points: int = 800,
               e_min: Optional[float] = None,
-              e_max: Optional[float] = None, *, spin_degeneracy: float = 1.0, cancel_check=None,
+              e_max: Optional[float] = None, *, spin_degeneracy: float = 1.0,
+              n_valence: Optional[int] = None, cancel_check=None,
               max_workspace_mb: float = 32.) -> DOSResult:
     """均匀网格采样 BZ + 高斯展宽计算总 DOS。
 
@@ -117,6 +127,7 @@ def solve_dos(model: TightBindingModel, mesh: Tuple[int, int] = (48, 48),
         n_points: 能量轴点数。
         e_min / e_max: 能量窗口 (eV)，默认取本征值范围 ±10σ。
         spin_degeneracy: 默认 1；仅未显式包含自旋的模型可选择乘以 2。
+        n_valence: 占据带数，决定 ``efermi``（占据带顶）；缺省取模型声明或半填充。
     """
     if len(mesh) != 2 or any(isinstance(n, bool) or not isinstance(n, (int, np.integer)) or n < 1 for n in mesh):
         raise ValueError("mesh must contain two positive integers")
@@ -168,9 +179,8 @@ def solve_dos(model: TightBindingModel, mesh: Tuple[int, int] = (48, 48),
     result = DOSResult(model_name=model.name, energies=energies, dos=dos,
                        sigma=sigma, mesh=tuple(mesh), spin_degeneracy=float(spin_degeneracy),
                        expected_states=float(n_bands * spin_degeneracy), n_bands=n_bands)
-    # 费米能级：非自旋极化 → 占据带数 = 总带数的一半；
-    # 全局排序后占据/非占据的分界在总本征值数的一半处
-    sorted_eig = np.sort(eig)
-    n_total = len(sorted_eig)
-    result.efermi = float(sorted_eig[max(0, n_total // 2 - 1)])
+    # 费米能级 = 占据带顶，与能带图的能量零点同一基准。n_valence 由模型
+    # 声明或显式参数解析；非半填模型不再被当成总本征值数的一半。
+    resolved = resolve_n_valence(model, n_bands, n_valence)
+    result.efermi = float(samples[:, resolved - 1].max())
     return result

@@ -48,6 +48,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..numerics import resolve_n_valence
+
 # 物理常数（SI）
 _E_CHARGE = 1.602176634e-19     # C
 _H_OVER_E2 = 25812.80745        # Ω（h/e²，电阻量子）
@@ -95,7 +97,6 @@ def solve_transport(model, n_cm2: float, tau_fs: float = 10.0,
         raise ValueError("载流子密度不能为零")
     if tau_fs <= 0 or temperature <= 0 or n_mesh < 8:
         raise ValueError("τ、T 必须为正且网格 ≥ 8")
-    n_val = n_valence if n_valence is not None else model.n_sites // 2
 
     B = model.lattice.reciprocal_matrix[:2, :2]   # 行 = b1, b2 (Å⁻¹)
     a_bz_m2 = abs(np.linalg.det(B)) * 1e20        # BZ 面积 (m⁻²)
@@ -106,6 +107,7 @@ def solve_transport(model, n_cm2: float, tau_fs: float = 10.0,
     kf1, kf2 = np.meshgrid(idx, idx, indexing="ij")
     E = model.bands(np.stack([kf1.ravel(), kf2.ravel()], axis=1))  # (N², nb)
     nb = E.shape[1]
+    n_val = resolve_n_valence(model, nb, n_valence)
 
     # ---- 速度：网格邻点中心差分（周期），抛物线带严格精确 -------------
     # ∂ε/∂kfrac_j = ±邻差×N/2；∂ε/∂q = B⁻¹·∂ε/∂kfrac（q = kfrac·B 行约定）

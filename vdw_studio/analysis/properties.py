@@ -14,6 +14,7 @@ from scipy.optimize import minimize
 
 from ..engine.kpath import DISPLAY_SYMBOLS, KPath
 from ..engine.solver import sample_bands
+from ..numerics import resolve_n_valence
 from ..structure.lattice import Lattice
 
 HBAR2_OVER_2M0 = 3.809982
@@ -60,14 +61,10 @@ def _validate_samples(model, points, energies, n_valence):
             len(points) != len(energies) or not len(points) or energies.shape[1] < 2 or
             not np.isfinite(points).all() or not np.isfinite(energies).all()):
         raise ValueError("Expected finite (nk,2) k points and (nk,nbands>=2) energies")
-    if n_valence is None:
-        n_valence = getattr(model, "n_sites", energies.shape[1]) // 2
-    if (isinstance(n_valence, (bool, np.bool_)) or not isinstance(n_valence, (int, np.integer)) or
-            not 1 <= n_valence < energies.shape[1]):
-        raise ValueError("n_valence must be an integer between 1 and nbands-1")
+    n_valence = resolve_n_valence(model, energies.shape[1], n_valence)
     if np.any(np.diff(energies, axis=1) < -1e-8):
         raise ValueError("Model energies must be sorted by band at each k point")
-    return points, energies, int(n_valence)
+    return points, energies, n_valence
 
 
 def _make_gap(model, points, energies, n_valence, kpath, scope, zero_tol, metadata):

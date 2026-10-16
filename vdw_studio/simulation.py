@@ -46,7 +46,7 @@ def _solve_valley(model: TMDKpModel, lattice: Lattice,
         ticks=x[[0, n_per_segment, -1]],
         tick_labels=[f"→Γ (|q|={KP_QMAX} Å$^{{-1}}$)", "K",
                      f"→M (|q|={KP_QMAX} Å$^{{-1}}$)"],
-        path=path, energies=np.array(sampled),
+        path=path, energies=np.array(sampled), n_valence=2,
     )
     e0 = model.energies((0.0, 0.0), +1)
     gaps = [np.diff(model.spin_block_energies((0, 0), +1, s))[0]
@@ -107,9 +107,11 @@ def simulate(model, n_per_segment: int = 40,
         log("生成 k 路径…")
         kpath = KPath.for_lattice(lattice)
         log("求解能带…")
-        band = solve_bands(model, kpath, n_per_segment, cancel_check=cancel_check)
+        band = solve_bands(model, kpath, n_per_segment, n_valence=n_valence,
+                           cancel_check=cancel_check)
         log("计算态密度…")
-        dos = solve_dos(model, mesh=dos_mesh, sigma=dos_sigma, cancel_check=cancel_check)
+        dos = solve_dos(model, mesh=dos_mesh, sigma=dos_sigma, n_valence=n_valence,
+                        cancel_check=cancel_check)
         log("分析路径带隙…")
         path_gap = analyze_path_gap(model, kpath, n_per_segment=n_per_segment,
                                    n_valence=n_valence, band=band)

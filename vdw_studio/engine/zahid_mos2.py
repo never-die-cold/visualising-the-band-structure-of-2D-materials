@@ -238,6 +238,10 @@ class ZahidMoS2Model:
     """
 
     VACUUM = 15.0
+    # 中性填充：Mo(4d⁵5s¹) + 2×S(3s²3p⁴) = 18 电子/胞，含 SOC 时占 54 态中的
+    # 18 条。非半填，故必须显式声明——否则绘图与带隙分析会各自推断出不同
+    # 的费米参考（半填 27 错误）。
+    n_valence = 18
 
     def __init__(self, a: float = 3.179, dxx: float = 3.135,
                  soc: bool = True) -> None:
