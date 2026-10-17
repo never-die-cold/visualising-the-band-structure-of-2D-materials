@@ -259,3 +259,34 @@ class TestMoireTab:
             assert abs(v_rel_2) > 3 * abs(v_rel)
         finally:
             win.close()
+
+
+class TestMoireWorker:
+    """moiré 后台计算（GUI 不再在主线程做 BM 对角化）。"""
+
+    def test_compute_matches_direct_model(self):
+        from vdw_studio.engine.moire import TwistedBilayerGraphene
+        from vdw_studio.gui.workers import MoireWorker
+
+        result = MoireWorker(1.05, n_shells=3, n_seg=8, n_grid=4).compute()
+        model = TwistedBilayerGraphene(theta_deg=1.05, n_shells=3)
+        # Γ-M-K-Γ：3 段 × n_seg + 1 个终点
+        assert result["energies"].shape[0] == 3 * 8 + 1
+        assert result["labels"] == ["Γ", "M", "K", "Γ"]
+        assert len(result["ticks"]) == len(result["labels"])
+        assert result["v_rel"] == pytest.approx(
+            model.dirac_velocity() / model.hbar_v)
+        assert result["width_mev"] > 0
+        assert result["l_moire"] == pytest.approx(model.geom.l_moire)
+        assert len(result["ticks"]) == len(result["labels"])
+
+    @pytest.mark.parametrize("kwargs", [
+        {"theta_deg": float("nan")},
+        {"theta_deg": 1.0, "n_seg": 1},
+        {"theta_deg": 1.0, "n_shells": 0},
+        {"theta_deg": 1.0, "n_grid": 1},
+    ])
+    def test_invalid_parameters_rejected(self, kwargs):
+        from vdw_studio.gui.workers import MoireWorker
+        with pytest.raises(ValueError):
+            MoireWorker(**kwargs)

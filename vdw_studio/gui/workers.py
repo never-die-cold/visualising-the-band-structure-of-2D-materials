@@ -22,6 +22,7 @@ from threading import Event
 
 from PyQt5.QtCore import QThread
 
+from ..numerics import finite_scalar, integer
 from ..simulation import simulate
 from ..task_state import encode_model_state
 
@@ -86,6 +87,54 @@ class SimulationWorker(QThread):
         except InterruptedError:
             self.result = None
             self.cancelled = True
+        except Exception as exc:  # noqa: BLE001 — 界面需要完整错误上报
+            self.error = (f"{type(exc).__name__}: {exc}\n"
+                          f"{traceback.format_exc()}")
+        finally:
+            self.done = True
+
+
+class MoireWorker(QThread):
+    """moiré 能带计算（轮询模式，理由同 :class:`SimulationWorker`）。
+
+    BM 对角化是单次短计算（秒级），不做协作取消；主线程轮询 ``done``
+    后一次性取 ``result`` / ``error``。此前该计算直接在 GUI 槽里同步执行，
+    期间界面无响应。
+    """
+
+    def __init__(self, theta_deg: float, n_shells: int = 4, n_seg: int = 30,
+                 n_grid: int = 12, parent=None) -> None:
+        super().__init__(parent)
+        self.theta_deg = finite_scalar(theta_deg, 'theta_deg')
+        self.n_shells = integer(n_shells, 'n_shells', minimum=1)
+        self.n_seg = integer(n_seg, 'n_seg', minimum=2)
+        self.n_grid = integer(n_grid, 'n_grid', minimum=2)
+        self.result: Optional[dict] = None
+        self.error: Optional[str] = None
+        self.done: bool = False
+
+    def compute(self) -> dict:
+        """完整计算（可在任意线程同步调用，供测试直接使用）。"""
+        from ..engine.moire import TwistedBilayerGraphene
+
+        model = TwistedBilayerGraphene(theta_deg=self.theta_deg,
+                                       n_shells=self.n_shells)
+        path, labels, ticks = model.moire_path(n_seg=self.n_seg)
+        energies = model.bands(list(path))
+        return {
+            'theta': self.theta_deg,
+            'energies': energies,
+            'ticks': list(ticks),
+            'labels': list(labels),
+            'v_rel': float(model.dirac_velocity() / model.hbar_v),
+            'width_mev': float(model.flat_band_width(n_grid=self.n_grid) * 1e3),
+            'l_moire': float(model.geom.l_moire),
+            'alpha': float(model.alpha),
+        }
+
+    def run(self) -> None:  # noqa: D102
+        try:
+            self.result = self.compute()
         except Exception as exc:  # noqa: BLE001 — 界面需要完整错误上报
             self.error = (f"{type(exc).__name__}: {exc}\n"
                           f"{traceback.format_exc()}")
