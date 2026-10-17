@@ -262,3 +262,40 @@ def test_bandviz_bad_import_restores_controls_without_changing_loaded_file(app, 
             worker.cancel()
             worker.wait(10000)
         win.close()
+
+
+def test_bandviz_close_forces_exit_when_worker_never_stops(app, tmp_path, monkeypatch):
+    """worker 卡住时窗口仍能关闭。
+
+    此前 closeEvent 只反复 ignore 并依赖 worker 自行结束，没有超时或强制
+    路径——一个卡在原生调用里的线程会让窗口永远关不掉。
+    """
+    win = root_window(tmp_path, monkeypatch)
+    win.show()
+
+    class StuckWorker:
+        terminated = False
+
+        def isRunning(self):
+            return True
+
+        def cancel(self):
+            pass
+
+        def terminate(self):
+            self.terminated = True
+
+        def wait(self, ms):
+            return True
+
+    stuck = StuckWorker()
+    win._workers.add(stuck)
+    win.CLOSE_TIMEOUT_S = 0.0           # 立即触发超时分支
+    try:
+        win.close()
+        app.processEvents()
+        assert not win.isVisible()
+        assert stuck.terminated
+    finally:
+        win._workers.discard(stuck)
+        win.close()

@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (
     QTabWidget, QFileDialog, QMessageBox
 )
 from PyQt5.QtCore import Qt, QTimer
+import time
 from pathlib import Path
 
 from .band_widget import BandStructureWidget
@@ -26,6 +27,9 @@ CONFIG_FLUSH_DEBOUNCE_MS = 400
 
 class MainWindow(QMainWindow):
     """主窗口：整合文件树、能带图、DOS 图、控制面板、持久化、日志、后台线程"""
+
+    # 关闭时等待后台线程的上限；超过后强制退出，避免窗口永远关不掉。
+    CLOSE_TIMEOUT_S = 5.0
 
     def __init__(self):
         super().__init__()
@@ -86,6 +90,7 @@ class MainWindow(QMainWindow):
         self._active_load_id = None
         self._dos_request = 0
         self._closing = False
+        self._close_deadline = None
         self._dos_timer = QTimer(self)
         self._dos_timer.setSingleShot(True)
         self._dos_timer.timeout.connect(self._start_dos_refresh)
@@ -115,6 +120,20 @@ class MainWindow(QMainWindow):
         self._band_timer.stop()
         self.cancel_tasks()
         if any(w.isRunning() for w in self._workers):
+            now = time.monotonic()
+            if self._close_deadline is None:
+                self._close_deadline = now + self.CLOSE_TIMEOUT_S
+            if now >= self._close_deadline:
+                self.logger.warning(
+                    'Background workers did not stop within %.0f s; closing anyway',
+                    self.CLOSE_TIMEOUT_S)
+                for worker in tuple(self._workers):
+                    if worker.isRunning():
+                        worker.terminate()
+                        worker.wait(1000)
+                self._flush_config()
+                event.accept()
+                return
             event.ignore()
             self._cleanup_timer.start(50)
             return
