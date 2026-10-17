@@ -1,6 +1,7 @@
 """Strict readers for VASP EIGENVAL and explicit/line-mode KPOINTS."""
 
 from dataclasses import dataclass, field
+import math
 from pathlib import Path
 from typing import List, Optional, Tuple
 import warnings
@@ -83,7 +84,16 @@ def _format_label(raw_label: str) -> Optional[str]:
 
 
 def _float(token: str) -> float:
-    return float(token.replace("D", "E").replace("d", "e"))
+    """解析 VASP 浮点，兼容 Fortran 的 D 指数。
+
+    绝大多数 token 是普通数字，先直接 float()；只有失败时才做 D→E
+    替换——此前每个 token 都要执行两次 str.replace（大 EIGENVAL 上有
+    数十万次无谓开销）。
+    """
+    try:
+        return float(token)
+    except ValueError:
+        return float(token.replace("D", "E").replace("d", "e"))
 
 
 def _without_comment(line: str) -> str:
@@ -404,7 +414,7 @@ class VASPEigenvalParser:
                     values = [_float(token) for token in fields[1:]]
                 except ValueError as exc:
                     raise self._error(line_number, f"invalid band row at k-point {point_index + 1}, band {band + 1}") from exc
-                if ordinal != band + 1 or not np.isfinite(values).all():
+                if ordinal != band + 1 or not all(map(math.isfinite, values)):
                     raise self._error(line_number, f"expected band index {band + 1} and finite energies/occupations")
                 for channel in range(ispin):
                     row_energies[channel * nbands + band] = values[channel]
