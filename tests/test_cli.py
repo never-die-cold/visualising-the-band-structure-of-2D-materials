@@ -67,9 +67,12 @@ class TestCliRun:
             assert data["energies"].shape == (21, 4)
             assert len(data["ticks"]) == 3
 
-    def test_run_unknown_material(self):
-        with pytest.raises(ValueError):
-            cli.main(["run", "NaCl", "--out", str(pytest.__file__)])
+    def test_run_unknown_material(self, capsys):
+        """未知材料返回非零退出码与可读错误，而不是裸 traceback。"""
+        assert cli.main(["run", "NaCl", "--out", str(pytest.__file__)]) == 1
+        captured = capsys.readouterr()
+        assert "NaCl" in captured.err
+        assert "Traceback" not in captured.err
 
     def test_shifted_graphene_exports_separate_gap_domains(self, tmp_path, monkeypatch):
         from vdw_studio.engine.models import HoneycombModel

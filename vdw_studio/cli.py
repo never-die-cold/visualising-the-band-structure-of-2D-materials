@@ -22,7 +22,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -88,6 +90,8 @@ def cmd_run(args) -> int:
     try:
         return _cmd_run(args)
     except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        args._error = error
         if getattr(args, 'db', None):
             from .storage import ResultsDB
             from .reproducibility import canonical_hash, provenance
@@ -99,8 +103,13 @@ def cmd_run(args) -> int:
             key = getattr(args, '_task_key', None) or canonical_hash({'request': request, 'code': code})
             ResultsDB(args.db).record(args.material, get_preset(args.material).engine,
                 payload={'request': request, 'provenance': code}, task_key=key,
-                status='failed', error=f'{type(exc).__name__}: {exc}')
-        raise
+                status='failed', error=error)
+        print(f"[vdW Studio] 仿真失败：{error}", file=sys.stderr)
+        if os.environ.get('VDW_STUDIO_TRACEBACK'):
+            traceback.print_exc()
+        else:
+            print("  （设置 VDW_STUDIO_TRACEBACK=1 可打印完整调用栈）", file=sys.stderr)
+        return 1
 
 
 def _cmd_run(args) -> int:
@@ -273,9 +282,12 @@ def cmd_run_all(args) -> int:
                                 resume=getattr(args, 'resume', False),
                                 gap_mesh=getattr(args, "gap_mesh", 24))
         try:
-            cmd_run(ns)
+            status = cmd_run(ns)
         except Exception as exc:  # 单材料失败不阻止其余材料计算
-            error = f"{type(exc).__name__}: {exc}"
+            status, error = 1, f"{type(exc).__name__}: {exc}"
+        else:
+            error = getattr(ns, '_error', f'exit code {status}') if status else None
+        if status:
             print(f"[失败] {key}: {error}")
             runs.append({"material": key, "status": "failed", "error": error})
         else:
