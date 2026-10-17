@@ -484,8 +484,10 @@ class MainWindow(QMainWindow):
             self.valley_canvas.fig.clf()
             ax = self.valley_canvas.fig.add_subplot(121)
             om = rep["omega"].T
+            # 热图范围必须跟随实际计算域（此前硬编码 ±0.25，改 KP_QMAX 后会脱节）
+            qmax = float(results["qmax"])
             im = ax.imshow(om, origin="lower",
-                           extent=[-0.25, 0.25, -0.25, 0.25],
+                           extent=[-qmax, qmax, -qmax, qmax],
                            cmap="RdBu_r",
                            vmin=-np.abs(om).max(), vmax=np.abs(om).max())
             ax.scatter([0], [0], marker="x", color="black", s=50)
