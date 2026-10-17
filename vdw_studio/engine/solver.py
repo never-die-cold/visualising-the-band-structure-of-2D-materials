@@ -94,14 +94,7 @@ def solve_bands(model: TightBindingModel, kpath: KPath,
     """
     kcart, x_axis, ticks = kpath.generate(model.lattice, n_per_segment)
     # 直接按倒格分数坐标采样（哈密顿量相位约定使用分数坐标）
-    kfrac_list = []
-    for (p0, p1) in kpath.segments():
-        for t in np.linspace(0.0, 1.0, n_per_segment, endpoint=False):
-            kfrac_list.append([p0[0] + t * (p1[0] - p0[0]),
-                               p0[1] + t * (p1[1] - p0[1])])
-    last = kpath.points[kpath.path[-1]]
-    kfrac_list.append(list(last))
-    kfrac = np.array(kfrac_list)
+    kfrac = kpath.sample_fractional(n_per_segment)
 
     energies = sample_bands(model, kfrac, cancel_check)
     labels = [DISPLAY_SYMBOLS.get(nm, nm) for nm in kpath.path]
