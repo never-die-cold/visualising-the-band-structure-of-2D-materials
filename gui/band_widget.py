@@ -3,8 +3,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
 
+from .figure_export import FigureExportMixin
 
-class BandStructureWidget(QWidget):
+
+class BandStructureWidget(FigureExportMixin, QWidget):
     """能带结构绘图组件
 
     重绘分两条路径：数据或图形结构变化走 :meth:`rebuild` 完整重建；
@@ -157,7 +159,3 @@ class BandStructureWidget(QWidget):
             return f"Sampled Eg = {gap_info['gap']:.6g} eV ({kind})"
         state = {'metal': 'metal', 'zero-gap': 'zero gap', 'unknown': 'undetermined'}[status]
         return f"Sampled k points: {state}"
-
-    def save_figure(self, filepath: str, dpi: int = 300):
-        """导出高分辨率图片"""
-        self.figure.savefig(filepath, dpi=dpi, bbox_inches='tight')

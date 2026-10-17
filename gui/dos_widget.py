@@ -3,9 +3,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from core.dos_analyzer import DosData
+from .figure_export import FigureExportMixin
 
 
-class DosWidget(QWidget):
+class DosWidget(FigureExportMixin, QWidget):
     """态密度（DOS）绘图组件"""
 
     def __init__(self, parent=None):
@@ -92,7 +93,3 @@ class DosWidget(QWidget):
         self.ax.spines['right'].set_visible(False)
 
         self.canvas.draw()
-
-    def save_figure(self, filepath: str, dpi: int = 300):
-        """导出高分辨率图片"""
-        self.figure.savefig(filepath, dpi=dpi, bbox_inches='tight')
