@@ -91,16 +91,6 @@ def _make_gap(model, points, energies, n_valence, kpath, scope, zero_tol, metada
     )
 
 
-def _path_points(kpath, n_per_segment):
-    if isinstance(n_per_segment, bool) or not isinstance(n_per_segment, (int, np.integer)) or n_per_segment < 2:
-        raise ValueError("n_per_segment must be an integer >= 2")
-    points = []
-    for p0, p1 in kpath.segments():
-        points.extend(np.linspace(p0, p1, n_per_segment, endpoint=False))
-    points.append(kpath.points[kpath.path[-1]])
-    return np.asarray(points)
-
-
 def _validate_tol(zero_tol):
     if not np.isfinite(zero_tol) or zero_tol <= 0:
         raise ValueError("zero_tol must be finite and positive")
@@ -111,7 +101,7 @@ def analyze_path_gap(model, kpath: Optional[KPath] = None, n_per_segment: int = 
     """Analyze only the display path, optionally reusing solve_bands output."""
     _validate_tol(zero_tol)
     kpath = kpath or KPath.for_lattice(model.lattice)
-    points = _path_points(kpath, n_per_segment)
+    points = kpath.sample_fractional(n_per_segment)
     if band is not None:
         expected = np.column_stack((points, np.zeros(len(points)))) @ model.lattice.reciprocal_matrix
         if band.kpoints.shape != expected.shape or not np.allclose(band.kpoints, expected, atol=1e-8, rtol=0):
