@@ -31,7 +31,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 from ..numerics import finite_scalar, finite_vector, hermitian_matrix, integer

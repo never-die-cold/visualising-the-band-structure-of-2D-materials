@@ -10,7 +10,6 @@ from __future__ import annotations
 from collections import Counter
 from typing import Optional
 
-import numpy as np
 
 from utils.atomic_io import write_text_atomic
 

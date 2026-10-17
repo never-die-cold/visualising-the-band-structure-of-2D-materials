@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """离屏运行软件并截取主界面"""
-import os, sys
+import sys
 from pathlib import Path
 ROOT = Path(r"C:\Users\ASUS\visualising the band structure of 2D materials")
 sys.path.insert(0, str(ROOT))

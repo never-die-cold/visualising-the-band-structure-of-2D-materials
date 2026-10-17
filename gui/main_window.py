@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout,
     QTabWidget, QFileDialog, QMessageBox
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import QTimer
 import time
 from pathlib import Path
 
@@ -12,9 +12,6 @@ from .control_panel import ControlPanel
 from .file_tree import FileTreeWidget
 from .workers.parse_worker import ParseWorker
 from .workers.dos_worker import DosWorker
-from core.parser import VASPEigenvalParser
-from core.band_analyzer import BandAnalyzer
-from core.dos_analyzer import load_spectrum
 from storage.database import Database
 from storage.config_manager import ConfigManager
 from utils.logger import setup_logger

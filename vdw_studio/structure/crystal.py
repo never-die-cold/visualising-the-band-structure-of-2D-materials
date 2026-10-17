@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from itertools import product
 from typing import Iterable, List, Optional, Sequence, Tuple
 

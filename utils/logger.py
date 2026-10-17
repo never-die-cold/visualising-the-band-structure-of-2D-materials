@@ -4,7 +4,6 @@ Application logging setup.
 
 import logging
 import sys
-from pathlib import Path
 from datetime import datetime
 from .paths import app_data_dir
 

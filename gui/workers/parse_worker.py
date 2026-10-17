@@ -4,7 +4,6 @@ Uses PyQt5 QThread to keep the GUI responsive.
 """
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from pathlib import Path
 from threading import Event
 from uuid import uuid4
 import traceback

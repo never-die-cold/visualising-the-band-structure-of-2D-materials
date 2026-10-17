@@ -19,12 +19,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from ..constants import HBAR2_OVER_2M0
+from ..constants import HBAR2_OVER_2M0  # noqa: F401 — 保持既有导入路径的再导出
 from ..structure.lattice import Lattice
 from ..numerics import finite_scalar, finite_vector, hermitian_matrix, integer
 
@@ -86,7 +86,6 @@ class TightBindingModel:
             raise ValueError('kfrac must contain 2 or 3 finite coordinates')
         if k.size == 2:
             k = np.r_[k, 0.0]
-        n = self.n_sites
         H = np.diag(self.onsite).astype(complex)
         TWO_PI = 2.0 * np.pi
         for h in self.hoppings:
@@ -203,7 +202,6 @@ class BilayerGrapheneModel(TightBindingModel):
                  electric_field: float = 0.0,
                  vacuum: float = 15.0) -> None:
         lattice = Lattice.hexagonal(a, vacuum=vacuum)
-        h = interlayer / 2
         dz_frac = interlayer / vacuum
         u = electric_field
         # 层内三近邻（与单层相同的分数位移）

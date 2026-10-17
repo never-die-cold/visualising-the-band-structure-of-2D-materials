@@ -31,7 +31,7 @@ Eq. (24)-(29)，自旋块对角）::
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict
 
 import numpy as np
 
@@ -166,8 +166,7 @@ class TMDKpModel:
         tau = float(valley)
         qx, qy = float(q[0]), float(q[1])
         q2 = qx * qx + qy * qy
-        # q_±^τ = τ q_x ± i q_y
-        qm = tau * qx - 1j * qy          # q₋^τ
+        # q_±^τ = τ q_x ± i q_y；当前哈密顿量只用到 q₊
         qp = tau * qx + 1j * qy          # q₊^τ
 
         # 能量参考：使 K 点最小（含 SOC）跃迁能 = E_bg

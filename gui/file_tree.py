@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QWidget, QVBoxLayout,
-    QLabel, QPushButton, QHeaderView, QMessageBox, QAbstractItemView
+    QLabel, QPushButton, QMessageBox, QAbstractItemView
 )
 from PyQt5.QtCore import pyqtSignal, Qt
 from pathlib import Path

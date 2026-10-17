@@ -1,6 +1,5 @@
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QDoubleSpinBox,
+    QWidget, QVBoxLayout, QLabel, QPushButton, QDoubleSpinBox,
     QGroupBox, QCheckBox, QProgressBar
 )
 

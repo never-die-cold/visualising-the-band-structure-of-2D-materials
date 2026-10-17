@@ -27,18 +27,12 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING
-
 import numpy as np
 
-from ..structure.lattice import Lattice
 from .models import TightBindingModel
 
-if TYPE_CHECKING:  # pragma: no cover
-    from .models import TightBindingModel as _Model
 
-
-def apply_strain(model: "TightBindingModel",
+def apply_strain(model: TightBindingModel,
                  ex: float = 0.0, ey: float = 0.0,
                  exponent: float = 2.0) -> TightBindingModel:
     """返回施加面内应变后的新模型（原模型不变）。
