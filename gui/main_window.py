@@ -325,8 +325,10 @@ class MainWindow(QMainWindow):
     def _on_worker_error(self, message: str):
         self.control_panel.set_progress(False, "Error")
         self.statusBar().showMessage("Error loading file")
-        QMessageBox.critical(self, "Error", f"Failed to parse file:\n{message}")
-        self.logger.error(f"Parse error: {message}")
+        # 对话框只放异常摘要（首行），完整 traceback 进日志
+        summary = message.splitlines()[0] if message else 'Unknown error'
+        QMessageBox.critical(self, "Error", f"Failed to parse file:\n{summary}")
+        self.logger.error("Parse error:\n%s", message)
         self._set_parse_busy(False)
 
     def _save_to_database(self):
