@@ -24,11 +24,11 @@ from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
+from ..constants import HBAR2_OVER_2M0
 from ..structure.lattice import Lattice
 from ..numerics import finite_scalar, finite_vector, hermitian_matrix, integer
 
-# 里德伯常量换算：ħ²/(2m₀) = 3.80998 eV·Å²（用于有效质量）
-HBAR2_OVER_2M0 = 3.809982444
+# HBAR2_OVER_2M0 从 constants 重新导出，保持既有导入路径可用。
 
 
 @dataclass(frozen=True)
