@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from vdw_studio import cli
-from vdw_studio.engine.models import HoneycombModel, TightBindingModel, Hopping
+from vdw_studio.engine.models import TightBindingModel, Hopping
 from vdw_studio.engine.strain import apply_strain
 from vdw_studio.presets import get_preset
 from vdw_studio.reproducibility import provenance, task_key, restore_model
@@ -109,8 +109,8 @@ def test_failed_cli_task_is_recorded_and_retried(tmp_path, monkeypatch):
     def fail(*args, **kwargs):
         raise ValueError('numerical failure')
     monkeypatch.setattr(cli, 'simulate', fail)
-    with pytest.raises(ValueError, match='numerical failure'):
-        cli.main(args)
+    # CLI 现在把失败转成可读错误 + 非零退出码，而不是抛裸异常
+    assert cli.main(args) == 1
     row = ResultsDB(tmp_path/'runs.db').history()[0]
     assert row['status'] == 'failed' and 'numerical failure' in row['error']
     monkeypatch.setattr(cli, 'simulate', original)
