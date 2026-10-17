@@ -613,7 +613,10 @@ class MainWindow(QMainWindow):
             ax.set_ylabel("E (meV)")
             ax.set_title(f"moiré 能带（θ = {theta}°，w = 110 meV，"
                          f"Γ$_m$-M-K-Γ$_m$）", fontsize=10)
-            ax.set_ylim(-80, 80)
+            # 窗口按低能带自适应；固定 ±80 meV 在大转角会裁掉能带。
+            shown = E[:, max(0, n0 - 3):min(n0 + 4, E.shape[1])] * 1e3
+            limit = max(80.0, float(np.abs(shown).max()) * 1.15)
+            ax.set_ylim(-limit, limit)
             fig.tight_layout()
             self.moire_canvas.draw_idle()
 
