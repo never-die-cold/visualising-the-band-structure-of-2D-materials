@@ -135,6 +135,21 @@ def test_simulation_separates_path_and_bz_results():
     assert result["path_gap"].scope == "path"
 
 
+def test_simulate_rejects_mismatched_lattice():
+    """周期模型的晶格由模型决定；不一致的入参必须报错，不能静默覆盖。"""
+    with pytest.raises(ValueError, match="lattice"):
+        simulate(HoneycombModel(a=2.46), n_per_segment=4, dos_mesh=(4, 4),
+                 gap_mesh=(4, 4), lattice=Lattice.square(3.0))
+
+
+def test_simulate_accepts_matching_lattice():
+    """与 model.lattice 数值一致的晶格（GUI/CLI 的常规路径）应正常通过。"""
+    model = HoneycombModel(a=2.46)
+    result = simulate(model, n_per_segment=4, dos_mesh=(4, 4), gap_mesh=(4, 4),
+                      lattice=Lattice(model.lattice.matrix.copy()))
+    assert np.allclose(result["lattice"].matrix, model.lattice.matrix)
+
+
 def band_data(energies, occupations=None, nelect=2, ispin=1, points=None):
     energies = np.asarray(energies, dtype=float)
     nk, nb = energies.shape

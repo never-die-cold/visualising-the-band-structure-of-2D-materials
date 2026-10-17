@@ -103,6 +103,11 @@ def simulate(model, n_per_segment: int = 40,
                 lambda q: model.hamiltonian(q, -1),
                 band_v=1, band_c=3, qmax=KP_QMAX, n_grid=41, cancel_check=cancel_check)
     elif isinstance(model, (TightBindingModel, ZahidMoS2Model)):
+        if lattice is not None and not np.allclose(
+                lattice.matrix, model.lattice.matrix, atol=1e-9, rtol=0):
+            raise ValueError(
+                "周期模型的晶格由模型自身决定；传入的 lattice 与 model.lattice "
+                "不一致。请用与模型匹配的结构构建器生成晶格。")
         lattice = model.lattice
         log("生成 k 路径…")
         kpath = KPath.for_lattice(lattice)
