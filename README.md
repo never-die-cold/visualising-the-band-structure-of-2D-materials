@@ -31,7 +31,7 @@ python -m pip install .
 bandviz
 ```
 
-从仓库根目录运行 `python main.py` 或 `bandviz` 时，左侧文件树会自动扫描 `data/example/` 下的示例数据（该路径相对当前工作目录）；从其它目录启动或安装为 wheel 后，请用 **Load EIGENVAL** 打开自己的数据。双击 **graphene** 或 **mos2** 即可加载并查看能带图与 DOS 图。
+运行 `python main.py` 时，左侧文件树会自动扫描仓库内的 `data/example/`（先找当前目录，再回退到源码树位置）；安装为 wheel 后示例数据不随包分发，请用 **Load EIGENVAL** 打开自己的数据。双击 **graphene** 或 **mos2** 即可加载并查看能带图与 DOS 图。
 
 ### 基本操作
 
