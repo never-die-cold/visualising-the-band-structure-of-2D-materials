@@ -47,10 +47,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from .berry import _velocity_matrices, _band_index, _check_isolated_band
+from ..constants import HBAR2_OVER_2M0
 from ..numerics import finite_scalar, finite_vector, hermitian_matrix, integer
 
-# ħ²/(2m₀) = 3.809982 eV·Å²（与 exciton.py 共享同一常数）
-HBAR2_OVER_2M0 = 3.809982
 # 玻尔磁子 μ_B = eħ/2m₀ = 57.8838 μeV/T（Zeeman 劈裂换算用）
 MU_B_MEV_PER_T = 0.0578838
 
