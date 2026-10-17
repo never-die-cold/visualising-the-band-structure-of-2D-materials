@@ -17,7 +17,10 @@ from __future__ import annotations
 
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+
+if TYPE_CHECKING:  # pragma: no cover — 注解解析用，避免运行时循环导入
+    from ..analysis.exciton import ExcitonResult
 
 from ..analysis.properties import GapResult, analyze_gap, analyze_path_gap
 from ..engine.kp_tmd import (TMD_KP_PARAMS, TMD_REFERENCE_MASSES,
@@ -244,14 +247,14 @@ def get_exciton_params(key: str) -> ExcitonParams:
 
 
 def solve_preset_exciton(key: str, eps_env: float = 1.0,
-                         **solve_kw) -> "ExcitonResult":
+                         **solve_kw) -> ExcitonResult:
     """用预设的文献默认参数求解 2D 激子束缚能。
 
     参数来自 :class:`ExcitonParams`（μ、r₀ 均有文献出处）；
     ``eps_env`` 为环境介电常数（介电工程调谐），其余关键字
     透传 :func:`vdw_studio.analysis.exciton.solve_exciton`。
     """
-    from ..analysis.exciton import ExcitonResult, solve_exciton
+    from ..analysis.exciton import solve_exciton
 
     ex = get_exciton_params(key)
     return solve_exciton(mu_over_m0=ex.mu_over_m0, eps_env=eps_env,
@@ -271,7 +274,6 @@ def run_preset(key: str, n_per_segment: int = 40) -> Dict:
         "preset": p, "structure": structure, "model": model,
     }
     if p.engine in ("tb", "sp3d5"):
-        from ..engine.kpath import KPath
         analyze = analyze_path_gap if p.engine == "sp3d5" else analyze_gap
         gap = analyze(model, n_per_segment=n_per_segment, n_valence=p.n_valence)
         result["gap"] = gap
