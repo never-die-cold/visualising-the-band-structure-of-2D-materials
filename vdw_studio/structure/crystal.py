@@ -124,10 +124,12 @@ class Crystal:
         对小原胞结构这是 O(n × 27) 的暴力枚举，对二维原胞完全够用。
         """
         center = np.asarray(center_frac, dtype=float)
-        # 沿各晶格方向的搜索半径（分数坐标单位），保守取 cutoff / 最短法向周期
+        # 沿各晶格方向的搜索半径（分数坐标单位）。上界必须用**最短法向
+        # 周期** d_i = 2π/|b_i|，而不是 |a_i|：斜晶胞里 |a_i| 可以远大于
+        # 层间距，用它会少枚举镜像、漏掉 cutoff 内的邻居。
         lat = self.lattice
-        lens = np.array([np.linalg.norm(lat.matrix[i]) for i in range(3)])
-        n_max = np.ceil(cutoff / lens).astype(int) + 1
+        periods = 2 * np.pi / np.linalg.norm(lat.reciprocal_matrix, axis=1)
+        n_max = np.ceil(cutoff / periods).astype(int) + 1
         fracs = self.frac_coords
         out: List[Neighbor] = []
         for i in range(self.n_atoms):

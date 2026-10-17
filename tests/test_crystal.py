@@ -139,3 +139,29 @@ class TestSupercell:
         c = make_simple_cubic()
         with pytest.raises(ValueError):
             c.supercell((0, 1, 1))
+
+
+class TestNeighborSearchBounds:
+    def test_oblique_cell_finds_all_images(self):
+        """搜索上界必须按法向周期（2π/|b_i|），不能按 |a_i|。
+
+        a1 长 3 Å，但沿该方向的法向周期只有 det/|a2| ≈ 0.80 Å；按 |a_i|
+        取上界会少枚举镜像，漏掉 cutoff 内的邻居（该配置下漏 (±4,∓4,0)）。
+        """
+        lat = Lattice(np.array([[3.0, 0.0, 0.0],
+                                [2.9, 0.8, 0.0],
+                                [0.0, 0.0, 15.0]]))
+        c = Crystal(lat)
+        c.add_atom("C", (0.0, 0.0, 0.0))
+        cutoff = 4.0
+        got = {(nb.index, tuple(nb.image))
+               for nb in c.neighbors((0.0, 0.0, 0.0), cutoff)}
+        expected = set()
+        for nx in range(-10, 11):
+            for ny in range(-10, 11):
+                for nz in range(-2, 3):
+                    shift = np.array([nx, ny, nz], float) @ lat.matrix
+                    if np.linalg.norm(shift) <= cutoff:
+                        expected.add((0, (nx, ny, nz)))
+        assert got == expected
+        assert len(got) > 20        # 该剪切格子应有大量镜像落在 cutoff 内
