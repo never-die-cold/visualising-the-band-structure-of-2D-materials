@@ -148,23 +148,29 @@ python examples/sk_convention_scan.py # SK 装配约定判据表（T16 对账入
 ```
 vdw_studio/
 ├── elements.py       # 元素数据库（质量/共价半径/CPK颜色）
+├── numerics.py       # 公共数值输入校验（有限性/整数/厄米/占据数解析）
+├── constants.py      # 共享物理常数（ħ²/2m₀、e、ħ、eV·Å→m/s、h/e²）
 ├── structure/        # 晶格、晶体、二维材料构建器
 │   ├── lattice.py    #   晶格矩阵/倒格子/应变缩放
 │   ├── crystal.py    #   原子/周期近邻/成键判定/超胞
-│   └── builders.py   #   11 种二维材料构建器
+│   └── builders.py   #   11 种二维材料构建器（含仅结构的 <name>_2h 双层）
 ├── engine/
-│   ├── kpath.py      #   高对称点与 k 路径（Γ-M-K-Γ 等）
+│   ├── kpath.py      #   高对称点、k 路径与统一的分数坐标采样
 │   ├── models.py     #   位点紧束缚模型（石墨烯/hBN/硅烯/磷烯/双层）
 │   ├── kp_tmd.py     #   TMD k·p 引擎（谷+自旋，6 材料参数库）
 │   ├── slater_koster.py  # SK 角因子（张量旋转严格构造）
-│   ├── zahid_mos2.py #   MoS₂ sp³d⁵ 非正交 TB（96 参数）
+│   ├── zahid_mos2.py #   MoS₂ sp³d⁵ 非正交 TB（96 参数；装配可参数化）
 │   ├── moire.py      #   转角双层石墨烯 BM 连续模型（moiré 平带）
-│   └── solver.py     #   能带/DOS 求解器
-├── analysis/         # 带隙/有效质量/Berry曲率/谷磁矩/谷物理/激子求解器
+│   ├── strain.py     #   面内应变（Harrison 键长标度，保留模型子类）
+│   └── solver.py     #   能带/DOS 求解器（费米参考来自声明的占据数）
+├── analysis/         # 带隙/有效质量/输运/Berry曲率/谷磁矩/激子
 ├── presets/          # 材料预设库（一键端到端 + 文献参考对账）
 ├── visualization/    # 结构/能带/DOS/布里渊区绘图
-├── gui/              # PyQt5 图形界面
-├── io/               # POSCAR/XYZ 导出
+├── gui/              # PyQt5 图形界面（结果盒 + 轮询，含后台 moiré 计算）
+├── io/               # POSCAR/XYZ（原子写）与 PROCAR 解析
+├── task_state.py     # 不可变任务快照与结构对齐
+├── storage.py        # 结果数据库（SQLite，含失败记录）
+├── reproducibility.py# provenance / task key / replay
 └── cli.py            # 命令行接口
 ```
 
