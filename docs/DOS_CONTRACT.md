@@ -14,4 +14,6 @@ DOSCAR 某些展宽方法可产生小幅负值，读入时保留原值；不根�
 
 vdW Studio 的 `solve_dos()` 在倒格原胞的均匀网格上积分，默认每个返回本征态计 1 次。未显式包含自旋的模型可选择 `spin_degeneracy=2`，含显式自旋的模型保持 1。结果和 CLI JSON 记录 `scope/spin_degeneracy/n_bands/expected_states`、网格、σ 和窗口积分。局部 k·p 仍不提供全区 DOS；实验性 SK 的适用性等级仍由模型验证计划约束。
 
+**费米参考（2026-10-17）**：`DOSResult.efermi` 是**占据带顶** `max E[n_valence-1]`，与能带图的能量零点同源。`n_valence` 由 `numerics.resolve_n_valence` 单点解析（显式参数 → 模型声明 → 实际带数半填）。此前它取全网格本征值排序后的中位，对非半填模型（如 sp³d⁵ 的 18/54）会得到与带隙分析不同的参考系——同一次运行的图与数值不在同一基准。回归见 `tests/test_fermi_reference.py`。
+
 回归用独立 Gaussian 公式和明确态数检查不等权重、分量可加、自旋/SOC、重复采样、占据与能量零点、分块一致性、DOSCAR 导入和错误，以及真实后台/界面范围显示。DOS 阈值推断带边只是依赖 σ 与网格的显示启发式，不能取代本征值带边分析。
