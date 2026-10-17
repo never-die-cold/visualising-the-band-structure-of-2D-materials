@@ -13,6 +13,7 @@ from typing import Optional
 import numpy as np
 
 from ..structure.crystal import Crystal
+from ...utils.atomic_io import write_text_atomic
 
 
 def poscar_string(crystal: Crystal, title: Optional[str] = None,
@@ -44,9 +45,8 @@ def poscar_string(crystal: Crystal, title: Optional[str] = None,
 
 
 def write_poscar(crystal: Crystal, path: str, **kwargs) -> None:
-    """把结构写成 POSCAR 文件。"""
-    with open(path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(poscar_string(crystal, **kwargs))
+    """把结构写成 POSCAR 文件（原子写：失败不会留下截断文件）。"""
+    write_text_atomic(path, poscar_string(crystal, **kwargs))
 
 
 def xyz_string(crystal: Crystal, title: Optional[str] = None) -> str:
@@ -60,6 +60,5 @@ def xyz_string(crystal: Crystal, title: Optional[str] = None) -> str:
 
 
 def write_xyz(crystal: Crystal, path: str, **kwargs) -> None:
-    """把结构写成 XYZ 文件。"""
-    with open(path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(xyz_string(crystal, **kwargs))
+    """把结构写成 XYZ 文件（原子写：失败不会留下截断文件）。"""
+    write_text_atomic(path, xyz_string(crystal, **kwargs))
