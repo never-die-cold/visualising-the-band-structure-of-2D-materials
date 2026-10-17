@@ -1,5 +1,6 @@
 """Cancelable spectrum refresh; holds captured input and display parameters."""
 from threading import Event
+import traceback
 from PyQt5.QtCore import QThread, pyqtSignal
 from core.dos_analyzer import load_spectrum
 
@@ -31,5 +32,5 @@ class DosWorker(QThread):
             self.completed.emit(result)
         except InterruptedError:
             pass
-        except Exception as exc:
-            self.error.emit(str(exc))
+        except Exception:
+            self.error.emit(traceback.format_exc())

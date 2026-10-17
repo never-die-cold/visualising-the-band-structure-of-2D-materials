@@ -7,6 +7,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from pathlib import Path
 from threading import Event
 from uuid import uuid4
+import traceback
 
 from core.parser import VASPEigenvalParser
 from core.band_analyzer import BandAnalyzer
@@ -84,5 +85,7 @@ class ParseWorker(QThread):
         except InterruptedError:
             self.cancelled.emit()
 
-        except Exception as e:
-            self.error.emit(str(e))
+        except Exception:
+            # 保留完整栈：核心 bug（AttributeError/MemoryError 等）不应只剩
+            # 一行 str(exc)，否则日志里没有任何排查线索。
+            self.error.emit(traceback.format_exc())
