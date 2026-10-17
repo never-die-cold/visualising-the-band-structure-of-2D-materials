@@ -593,7 +593,7 @@ class MainWindow(QMainWindow):
             path, labels, ticks = model.moire_path(n_seg=n_seg)
             E = model.bands(list(path))
             v_rel = model.dirac_velocity() / model.hbar_v
-            width_mev = model.flat_band_width(n_grid=8) * 1e3
+            width_mev = model.flat_band_width(n_grid=12) * 1e3
 
             fig = self.moire_canvas.fig
             fig.clf()
