@@ -322,3 +322,21 @@ def test_bandviz_dos_error_is_surfaced_once(app, tmp_path, monkeypatch):
         assert 'Traceback' not in warnings[0]      # 对话框只放摘要
     finally:
         win.close()
+
+
+def test_bandviz_database_failure_is_reported_in_status_bar(app, tmp_path, monkeypatch):
+    """历史入库失败必须在状态栏可见（此前只写日志、用户看到 'Done'）。"""
+    from test_bandviz_mass import write_eigenval
+
+    file = write_eigenval(tmp_path, [[0, 0, 0], [.25, 0, 0]])
+    win = root_window(tmp_path, monkeypatch)
+
+    def fail(**kwargs):
+        raise RuntimeError('disk full')
+    monkeypatch.setattr(win.db, 'add_task', fail)
+    try:
+        win._load_eigenval(str(file))
+        wait_until(app, lambda: win.current_data is not None and not win._workers)
+        assert 'history not saved' in win.statusBar().currentMessage()
+    finally:
+        win.close()

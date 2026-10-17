@@ -330,7 +330,7 @@ class MainWindow(QMainWindow):
         self.file_tree.add_recent_file(str(self.current_file))
 
         # 保存到数据库
-        self._save_to_database()
+        saved = self._save_to_database()
 
         # 保存配置
         self._persist_config(self.config.add_recent_file, str(self.current_file))
@@ -338,7 +338,8 @@ class MainWindow(QMainWindow):
 
         # 恢复 UI
         self.control_panel.set_progress(False, "Done")
-        self.statusBar().showMessage(f"Loaded: {self.current_file.name}")
+        suffix = '' if saved is not False else ' (history not saved)'
+        self.statusBar().showMessage(f"Loaded: {self.current_file.name}{suffix}")
         self.setWindowTitle(f"Band Viz - {self.current_file.name}")
         self.logger.info(f"Successfully loaded: {self.current_file.name}")
 
@@ -353,9 +354,13 @@ class MainWindow(QMainWindow):
         self._set_parse_busy(False)
 
     def _save_to_database(self):
-        """将当前计算结果保存到 SQLite"""
+        """将当前计算结果保存到 SQLite。
+
+        返回 True=已保存、False=失败、None=无数据可保存。失败不再静默：
+        调用方据此在状态栏说明历史未入库。
+        """
         if not self.current_data or not self.current_analyzer:
-            return
+            return None
 
         try:
             gap_info = self.current_analyzer.get_band_gap()
@@ -377,8 +382,10 @@ class MainWindow(QMainWindow):
                 action="load",
                 details=str(self.current_file)
             )
+            return True
         except Exception as e:
-            self.logger.warning(f"Failed to save to database: {e}")
+            self.logger.warning("Failed to save to database: %s", e, exc_info=True)
+            return False
 
     # ------------------------------------------------------------------
     # 控制面板回调
