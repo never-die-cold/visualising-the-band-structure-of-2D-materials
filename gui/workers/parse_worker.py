@@ -73,7 +73,6 @@ class ParseWorker(QThread):
                 state_capacity=analyzer.state_capacity,
                 cancel_check=self.check_interruption,
                 energy_range=(self.emin, self.emax),
-                num_points=800,
                 sigma=self.dos_sigma
             )
 
