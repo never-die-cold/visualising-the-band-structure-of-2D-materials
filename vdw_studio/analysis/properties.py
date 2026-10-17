@@ -12,13 +12,11 @@ from typing import Optional, Sequence, Tuple
 import numpy as np
 from scipy.optimize import minimize
 
+from ..constants import HBAR2_OVER_2M0, SLOPE_TO_VELOCITY
 from ..engine.kpath import DISPLAY_SYMBOLS, KPath
 from ..engine.solver import sample_bands
 from ..numerics import resolve_n_valence
 from ..structure.lattice import Lattice
-
-HBAR2_OVER_2M0 = 3.809982
-SLOPE_TO_VELOCITY = 1.51927e5
 
 
 @dataclass
