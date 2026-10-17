@@ -48,13 +48,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..constants import ELEMENTARY_CHARGE, EV_ANGSTROM_TO_V, H_OVER_E2
 from ..numerics import finite_scalar, integer, resolve_n_valence
-
-# 物理常数（SI）
-_E_CHARGE = 1.602176634e-19     # C
-_H_OVER_E2 = 25812.80745        # Ω（h/e²，电阻量子）
-# 速度换算: ∂ε/∂q [eV·Å] → v [m/s] = ×(eV→J)·(Å→m)/ħ
-_EV_ANGSTROM_TO_V = _E_CHARGE * 1e-10 / 1.054571817e-34   # ≈ 1.51927e5
 
 
 @dataclass
@@ -125,7 +120,7 @@ def solve_transport(model, n_cm2: float, tau_fs: float = 10.0,
                               - np.roll(grid, +1, axis=axis)) * (N / 2.0)
                              ).ravel()
     dEdq = dEdk @ np.linalg.inv(B).T              # (N², nb, 2) eV·Å
-    vel = dEdq * _EV_ANGSTROM_TO_V                # m/s
+    vel = dEdq * EV_ANGSTROM_TO_V                # m/s
 
     # ---- 中性参考与费米能级二分 --------------------------------------
     e_vbm = E[:, n_val - 1].max()
@@ -165,22 +160,22 @@ def solve_transport(model, n_cm2: float, tau_fs: float = 10.0,
     # σ_ij = e²·τ·g·w_cell·Σ v_i v_j (−∂f/∂ε_J)；eV⁻¹→J⁻¹: /(1.602e-19)
     with np.errstate(over="ignore"):   # |E−ε_F|/2kT 大时 cosh 上溢 → 权重 0
         dfde = (1.0 / np.cosh((E - e_fermi) / (2 * kbT)) ** 2) / (4 * kbT)
-    pref = _E_CHARGE ** 2 * (tau_fs * 1e-15) * g_spin * w_cell \
-        / _E_CHARGE                               # = e·τ·g·w (C·s·m⁻²)
+    pref = ELEMENTARY_CHARGE ** 2 * (tau_fs * 1e-15) * g_spin * w_cell \
+        / ELEMENTARY_CHARGE                               # = e·τ·g·w (C·s·m⁻²)
     v0, v1 = vel[:, :, 0], vel[:, :, 1]           # (N², nb) m/s
     sigma_xx = pref * float(np.sum(v0 * v0 * dfde))
     sigma_yy = pref * float(np.sum(v1 * v1 * dfde))
     sigma_xy = pref * float(np.sum(v0 * v1 * dfde))
 
-    mu_xx = sigma_xx / (_E_CHARGE * abs(n_target)) * 1e4   # cm²/Vs
-    mu_yy = sigma_yy / (_E_CHARGE * abs(n_target)) * 1e4
-    mu_xy = sigma_xy / (_E_CHARGE * abs(n_target)) * 1e4
+    mu_xx = sigma_xx / (ELEMENTARY_CHARGE * abs(n_target)) * 1e4   # cm²/Vs
+    mu_yy = sigma_yy / (ELEMENTARY_CHARGE * abs(n_target)) * 1e4
+    mu_xy = sigma_xy / (ELEMENTARY_CHARGE * abs(n_target)) * 1e4
 
     return TransportResult(
         n_cm2=n_cm2, fermi_ev=float(e_fermi),
-        sigma_xx=sigma_xx * _H_OVER_E2,           # → e²/h
-        sigma_yy=sigma_yy * _H_OVER_E2,
-        sigma_xy=sigma_xy * _H_OVER_E2,
+        sigma_xx=sigma_xx * H_OVER_E2,           # → e²/h
+        sigma_yy=sigma_yy * H_OVER_E2,
+        sigma_xy=sigma_xy * H_OVER_E2,
         mu_xx=mu_xx, mu_yy=mu_yy, mu_xy=mu_xy,
         temperature=temperature, tau_fs=tau_fs, n_mesh=n_mesh,
     )
