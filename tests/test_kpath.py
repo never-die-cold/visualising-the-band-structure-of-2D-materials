@@ -78,3 +78,20 @@ class TestGenerate:
         kp = KPath.for_lattice(Lattice.hexagonal(2.46))
         with pytest.raises(ValueError):
             kp.generate(Lattice.hexagonal(2.46), n_per_segment=1)
+
+
+def test_sample_fractional_matches_generate():
+    """sample_fractional 是绘图采样的单一实现：两者必须逐点一致。"""
+    lat = Lattice.hexagonal(2.46)
+    kp = KPath.for_lattice(lat)
+    n = 12
+    kfrac = kp.sample_fractional(n)
+    kcart, _, _ = kp.generate(lat, n)
+    np.testing.assert_allclose(kfrac @ lat.reciprocal_matrix[:2], kcart)
+    assert kfrac.shape == ((len(kp.path) - 1) * n + 1, 2)
+
+
+def test_sample_fractional_rejects_invalid_count():
+    kp = KPath.for_lattice(Lattice.hexagonal(2.46))
+    with pytest.raises(ValueError):
+        kp.sample_fractional(1)

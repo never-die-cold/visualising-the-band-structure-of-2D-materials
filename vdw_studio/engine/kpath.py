@@ -111,6 +111,24 @@ class KPath:
         return [(self.points[self.path[i]], self.points[self.path[i + 1]])
                 for i in range(len(self.path) - 1)]
 
+    def sample_fractional(self, n_per_segment: int,
+                          *, include_end: bool = True) -> np.ndarray:
+        """沿路径返回 (N, 2) 分数坐标采样点。
+
+        每段取 ``n_per_segment`` 个不含终点的点，再按 ``include_end``
+        补上路径终点。求解器、带隙分析与绘图采样共用这一实现，避免
+        各自的一份副本在约定变更时漂移。
+        """
+        n_per_segment = integer(n_per_segment, 'n_per_segment', minimum=2)
+        samples: List[np.ndarray] = []
+        for (p0, p1) in self.segments():
+            for t in np.linspace(0.0, 1.0, n_per_segment, endpoint=False):
+                samples.append(np.array([p0[0] + t * (p1[0] - p0[0]),
+                                         p0[1] + t * (p1[1] - p0[1])]))
+        if include_end:
+            samples.append(np.array(self.points[self.path[-1]]))
+        return np.array(samples)
+
     def generate(self, lattice: Lattice, n_per_segment: int = 60
                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """沿路径采样 k 点。
@@ -127,15 +145,7 @@ class KPath:
         """
         n_per_segment = integer(n_per_segment, 'n_per_segment', minimum=2)
         recip = lattice.reciprocal_matrix
-        kfrac_list: List[np.ndarray] = []
-        for (p0, p1) in self.segments():
-            for t in np.linspace(0.0, 1.0, n_per_segment, endpoint=False):
-                kfrac_list.append(np.array([p0[0] + t * (p1[0] - p0[0]),
-                                            p0[1] + t * (p1[1] - p0[1])]))
-        # 补上最后一个点
-        last = self.points[self.path[-1]]
-        kfrac_list.append(np.array(last))
-        kfrac = np.array(kfrac_list)
+        kfrac = self.sample_fractional(n_per_segment)
 
         kcart = kfrac @ recip[:2]
         # 累积长度（段间断开处长度照常累计，绘图用 ticks 定位即可）
