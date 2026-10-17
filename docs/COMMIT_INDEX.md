@@ -76,4 +76,20 @@ T15 之后的科研推进（T16/T17 门槛轮次）与本轮复核不在上表�
 | 50 | `ab750a3` | docs(studio): register the SK convention criterion script in the example list |
 | 51 | `620313f` | docs(sk): record the literature check — the Nanoskif manual is the only path |
 
-本轮验收：本机 Windows / Python 3.12 完整套件 **708 项通过**（T15 收束时为 641 项）。复核发现的问题、文件处置与未处理项见 [项目检查计划](PROJECT_REVIEW_PLAN.md) 的「2026-10-17 改进轮次」节。
+本轮验收：本机 Windows / Python 3.12 完整套件 **727 项通过**（T15 收束时为 641 项）。复核发现的问题、文件处置与未处理项见 [项目检查计划](PROJECT_REVIEW_PLAN.md) 的「2026-10-17 改进轮次」节。
+
+### 后续迭代（按单项细粒度拆分）
+
+在上表 45–51 之后继续按单个改动提交（共 52 条），按迭代分组：
+
+| 迭代 | 主题 | 代表提交 |
+|---|---|---|
+| 1 | vdW Studio 结构与晶格正确性：邻居搜索上界、超胞校验、晶格一致性、SK 断言、应变保留子类 | `90df5d6` … `1451408` |
+| 2 | GUI 硬编码与 moiré 后台化：qmax / n_grid / ylim、MoireWorker、关闭等待 | `fa0f4e5` … `901e057` |
+| 3 | BandViz 健壮性：信号改名、traceback、DOS/数据库错误可见、关闭超时、金属标签 | `86f497f` … `adddc8b` |
+| 4 | 去重与常量统一：共享物理常数、KPath 采样、TMD 参考带隙、原子写、CLI 错误、示例目录回退 | `82d58ec` … `4fe5efe` |
+| 5 | lint 与 CI 门禁：ruff（E9 + pyflakes）、CI 步骤、测试适配 | `a1aefe0` … `47e9b8e` |
+| 6 | 解析性能：浮点解析与有限性检查热路径、基准重测 | `7f79536` … `d92f9b7` |
+| 收尾 | 共享导出 mixin、默认值单点化、文档与索引 | `1b2775e` … |
+
+完整列表见 `git log --oneline 6cf5dbe..HEAD`（共 60 条）。

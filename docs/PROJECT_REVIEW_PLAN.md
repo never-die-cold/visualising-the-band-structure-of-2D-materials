@@ -243,4 +243,17 @@ T11 随每次缺陷修复推进，不等所有实现完成后才补测试。保�
 
 SK 文献核查（2026-10-17，随本轮交付）：唯一可能给出装配约定的是**未公开的 Nanoskif 用户参考手册**（NanoAcademic 开发、鸿之微代理，须向其索取）——此前列为候选的 Zahid 博士论文、NEMO-3D 文档、《Handbook》已逐一排除（论文无补充材料且不提装配细节；Nanoskif 从未公开发布；NEMO-3D/QTCAD 文档均为正交 sp³d⁵s* 的标准 SK54 约定；《Handbook》与 Boykin–Klimeck 被付费墙阻断）。核查同时**更正了项目内一处无来源推断**：原记"线索指向 η_ij 型轨道框架旋转"，实际 η 在相关文档中是 Harrison 键长标度指数，且 Nanoskif 自述"限于 SK 传统的双中心近似"，不支持旋转框架假设；最可能的错配位置改为逐壳层的方向余弦/参数分配（依据：S–Mo 块的 8 个独立积分无法在一次标准 SK54 装配中全部消费），并标注为推断。详见 [参考文献](REFERENCES.md)。
 
-验收：本机 Windows / Python 3.12 完整套件 **708 项通过**（T15 收束时为 641 项；本轮新增 27 项回归，分属费米参考 8、输入校验 13、交互性能 4、SK 装配 2）。
+验收：本机 Windows / Python 3.12 完整套件 **727 项通过**（T15 收束时为 641 项；本轮新增 46 项回归）。
+
+### 后续迭代（同一轮的细粒度拆分）
+
+在五批推进之后，按单项继续拆分（共 52 条提交，见 [提交索引](COMMIT_INDEX.md) 的分组表）：
+
+1. **结构/晶格正确性**：`Crystal.neighbors` 的镜像搜索上界改用最短法向周期 `2π/|b_i|`（斜晶胞下用 `|a_i|` 会漏邻居；回归证明旧上界漏 `(±4,∓4,0)`）；`supercell` 拒绝浮点倍数；`simulate` 拒绝与模型不一致的晶格；SK 键表校验不再依赖 `assert`；`apply_strain` 保留模型子类（此前丢失 `electric_field` 等字段）。
+2. **GUI 硬编码与后台化**：谷物理热图范围跟随 `results["qmax"]`；moiré 带宽用与文档一致的 `n_grid=12`；纵轴按数据自适应；moiré 计算移入 `MoireWorker`（轮询模式，主线程不再阻塞 2–4 s），关闭时一并等待。
+3. **BandViz 健壮性**：`ParseWorker` 的完成信号改名 `loaded`（不再遮蔽 `QThread.finished`）；两个 worker 上报完整 traceback（首行保留异常摘要）；DOS 刷新失败首次弹窗、数据库入库失败在状态栏可见；关闭流程 5 s 超时兜底；金属/零隙的带边标签加 `Sampled` 限定。
+4. **去重与常量统一**：新增 `vdw_studio/constants.py` 并替换 6 处各自定义的物理常数（`models.py` 的舍入值一并统一）；`KPath.sample_fractional` 统一三处路径采样；TMD 参考带隙从 `TMD_KP_PARAMS` 派生；POSCAR/XYZ 改用原子写；CLI 单材料失败返回可读错误与退出码（`run-all` 改用返回码记账）；示例目录增加源码树回退。
+5. **lint 与 CI**：配置 ruff 只启用 E9 + pyflakes 并加入 CI（`ruff` 进 test extra）；清理 47 处未使用导入/变量与 1 处 `F821`（`ExcitonResult` 注解）。
+6. **解析性能**：`_float` 只在失败时处理 Fortran D 指数、逐行有限性检查改用 `math.isfinite`；4096×64 解析从 0.52 s 降至 0.21 s（tracemalloc 下 7.50 → 6.46 s），基准与说明已更新。
+
+未做的候选及原因：`BandData.reciprocal_matrix` 缓存——实测只有一处调用点，且测试会在构造后改写 `lattice_matrix`，缓存收益不足而失效风险真实；SK 引擎两份 `sk_element` 实现的合并——行为已分叉（反向查表的 shell 顺序回退），需与 T16 的约定对账一起做，单独合并会掩盖物理差异。
