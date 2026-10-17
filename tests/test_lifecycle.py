@@ -299,3 +299,26 @@ def test_bandviz_close_forces_exit_when_worker_never_stops(app, tmp_path, monkey
     finally:
         win._workers.discard(stuck)
         win.close()
+
+
+def test_bandviz_dos_error_is_surfaced_once(app, tmp_path, monkeypatch):
+    """DOS 刷新失败首次弹出提示，连续调参不重复打扰。"""
+    warnings = []
+    monkeypatch.setattr(QMessageBox, 'warning',
+                        lambda *args: warnings.append(args[-1]))
+    win = root_window(tmp_path, monkeypatch)
+
+    class W:
+        request_id = 0
+        data = None
+
+    try:
+        win._dos_request = 0
+        message = 'ValueError: bad DOSCAR\nTraceback (most recent call last):'
+        win._on_dos_error(W(), message)
+        win._on_dos_error(W(), message)
+        assert len(warnings) == 1
+        assert 'bad DOSCAR' in warnings[0]
+        assert 'Traceback' not in warnings[0]      # 对话框只放摘要
+    finally:
+        win.close()

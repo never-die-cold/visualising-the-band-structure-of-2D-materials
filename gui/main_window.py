@@ -89,6 +89,7 @@ class MainWindow(QMainWindow):
         self._workers = set()
         self._active_load_id = None
         self._dos_request = 0
+        self._dos_error_shown = False
         self._closing = False
         self._close_deadline = None
         self._dos_timer = QTimer(self)
@@ -309,6 +310,7 @@ class MainWindow(QMainWindow):
         self.current_data = band_data
         self.current_analyzer = analyzer
         self.current_dos_data = dos_data
+        self._dos_error_shown = False
 
         # 更新能带图
         self.band_widget.set_data(band_data, analyzer)
@@ -470,8 +472,17 @@ class MainWindow(QMainWindow):
 
     def _on_dos_error(self, worker, message):
         if not self._closing and worker.request_id == self._dos_request:
-            self.control_panel.set_progress(False, message)
-            self.logger.warning('Spectrum refresh failed: %s', message)
+            self.control_panel.set_progress(False, "Spectrum refresh failed")
+            self.logger.warning('Spectrum refresh failed:\n%s', message)
+            # 首次失败给出可操作提示；连续调参时不重复弹窗。
+            if not self._dos_error_shown:
+                self._dos_error_shown = True
+                summary = message.splitlines()[0] if message else 'Unknown error'
+                QMessageBox.warning(
+                    self, "DOS refresh failed",
+                    f"Could not refresh the spectrum:\n{summary}\n\n"
+                    "The last successful result stays on screen; "
+                    "see the log for the full traceback.")
 
     def export_figure(self, fmt: str):
         if not self.current_file:
