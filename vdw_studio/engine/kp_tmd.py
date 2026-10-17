@@ -35,10 +35,8 @@ from typing import Dict, Optional
 
 import numpy as np
 
+from ..constants import HBAR2_OVER_2M0
 from ..numerics import finite_vector
-
-# ħ²/(2m₀) = 3.809982 eV·Å²
-HBAR2_OVER_2M0 = 3.809982
 
 # ----------------------------------------------------------------------
 # 材料参数（Kormányos 2015, (HSE,LDA) 拟合）
