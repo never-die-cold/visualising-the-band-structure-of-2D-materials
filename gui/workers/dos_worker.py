@@ -14,7 +14,7 @@ class DosWorker(QThread):
         super().__init__(parent)
         self.data, self.path, self.request_id = data, path, request_id
         self.parameters = dict(fermi_level=fermi_level, energy_range=tuple(energy_range),
-                               sigma=sigma, state_capacity=state_capacity, num_points=800)
+                               sigma=sigma, state_capacity=state_capacity)
         self._cancel_requested = Event()
 
     def cancel(self):
