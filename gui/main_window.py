@@ -188,8 +188,12 @@ class MainWindow(QMainWindow):
     # 示例数据初始化
     # ------------------------------------------------------------------
     def _init_example_data(self):
-        example_dir = Path('data/example')
-        if example_dir.exists():
+        # 先看当前工作目录（从仓库根运行），再回退到源码树位置——否则
+        # 从其它目录启动 main.py 时示例数据会静默消失。
+        candidates = (Path('data/example'),
+                      Path(__file__).resolve().parent.parent / 'data' / 'example')
+        example_dir = next((path for path in candidates if path.is_dir()), None)
+        if example_dir is not None:
             self.file_tree.set_project_directory(str(example_dir))
             materials = self.file_tree.scan_for_materials(str(example_dir))
             for name, path in materials:
