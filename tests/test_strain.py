@@ -131,3 +131,22 @@ class TestPhosphoreneStrain:
         p = apply_strain(self.p0, ex=0.02, ey=-0.01)
         m1, m2, _ = principal_masses(p, (0, 0), band=2, dk=1e-4)
         assert max(m1, m2) / min(m1, m2) > 2.5
+
+
+def test_strain_preserves_model_subclass():
+    """应变结果保留子类与其参数。
+
+    此前 apply_strain 总是返回基类 TightBindingModel，并挂一个未被任何代码
+    读取的动态属性 parent_name——子类字段（如 electric_field）在应变后丢失。
+    """
+    from vdw_studio.engine.models import BilayerGrapheneModel
+
+    model = BilayerGrapheneModel(electric_field=0.05)
+    strained = apply_strain(model, ex=0.02, ey=0.0)
+    assert type(strained) is BilayerGrapheneModel
+    assert strained.electric_field == 0.05
+    assert strained.gamma1 == model.gamma1
+    assert strained.n_sites == model.n_sites
+    assert not hasattr(strained, 'parent_name')
+    # 原模型不被改动
+    assert model.lattice.parameters()[0] == pytest.approx(2.46)

@@ -26,6 +26,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -48,7 +49,8 @@ def apply_strain(model: "TightBindingModel",
         exponent: 键长标度指数 n（t' = t·(d/d')^n）。
 
     返回:
-        新的 :class:`TightBindingModel`（基类实例，晶格与 hopping 已更新）。
+        新的同类型模型：``copy`` 保留子类（如 BilayerGrapheneModel 的
+        electric_field），只替换 lattice / hoppings / name。
     """
     if not hasattr(model, "hoppings") or not hasattr(model, "lattice"):
         raise TypeError("apply_strain 仅支持位点型紧束缚模型 "
@@ -74,14 +76,8 @@ def apply_strain(model: "TightBindingModel",
         new_hoppings.append(
             type(h)(h.i, h.j, tuple(np.asarray(h.dfrac, dtype=float)), t_new))
 
-    strained = TightBindingModel(
-        lattice=new_lat,
-        n_sites=model.n_sites,
-        site_symbols=list(model.site_symbols),
-        onsite=np.array(model.onsite, dtype=float, copy=True),
-        hoppings=new_hoppings,
-        name=f"{model.name} (εx={ex:+.1%}, εy={ey:+.1%})",
-    )
-    # 保留原模型类信息，便于界面显示
-    strained.parent_name = getattr(model, "name", "")
+    strained = copy.copy(model)
+    strained.lattice = new_lat
+    strained.hoppings = new_hoppings
+    strained.name = f"{model.name} (εx={ex:+.1%}, εy={ey:+.1%})"
     return strained
