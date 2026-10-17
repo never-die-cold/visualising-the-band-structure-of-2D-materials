@@ -12,8 +12,9 @@ from typing import Optional
 
 import numpy as np
 
+from utils.atomic_io import write_text_atomic
+
 from ..structure.crystal import Crystal
-from ...utils.atomic_io import write_text_atomic
 
 
 def poscar_string(crystal: Crystal, title: Optional[str] = None,
