@@ -38,6 +38,9 @@ jobs:
           python -m pip install ".[test]"
           python -m pip check
 
+      - name: Lint (ruff: E9 + pyflakes)
+        run: python -m ruff check .
+
       - name: Check installed command entry
         run: vdw-studio-cli list
 

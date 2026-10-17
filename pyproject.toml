@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest==9.1.1"]
+test = ["pytest==9.1.1", "ruff==0.17.0"]
 
 [project.scripts]
 bandviz = "main:main"
@@ -31,3 +31,12 @@ py-modules = ["main"]
 where = ["."]
 include = ["core*", "gui*", "storage*", "utils*", "vdw_studio*"]
 exclude = ["tests*", "papers*", "examples*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# 只启用能抓住真实缺陷的规则：语法错误、未定义名、未使用导入/变量。
+# 风格类规则（import 排序、注解现代化）不在本轮统一，避免大面积格式 diff。
+select = ["E9", "F"]
