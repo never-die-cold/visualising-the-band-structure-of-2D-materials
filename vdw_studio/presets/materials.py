@@ -20,7 +20,8 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 
 from ..analysis.properties import GapResult, analyze_gap, analyze_path_gap
-from ..engine.kp_tmd import TMDKpModel, TMDKpParams, TMD_REFERENCE_MASSES
+from ..engine.kp_tmd import (TMD_KP_PARAMS, TMD_REFERENCE_MASSES,
+                             TMDKpModel, TMDKpParams)
 from ..engine.models import (
     BilayerGrapheneModel,
     BuckledHoneycombModel,
@@ -148,10 +149,9 @@ _register(MaterialPreset(
 ))
 
 # --- TMD（k·p 引擎，Kormányos 2015 (HSE,LDA) 参数）---------------------
-_TMD_GAP = {k: v["e_bg_dft"] for k, v in {
-    "MoS2": dict(e_bg_dft=1.67), "MoSe2": dict(e_bg_dft=1.40),
-    "WS2": dict(e_bg_dft=1.60), "WSe2": dict(e_bg_dft=1.30),
-    "MoTe2": dict(e_bg_dft=0.997), "WTe2": dict(e_bg_dft=0.792)}.items()}
+# 参考带隙直接取参数表的 DFT 值：此前这里另抄了一份数值，参数表更新后
+# 会静默漂移（预设的 gap_matches_ref 仍按旧值判定）。
+_TMD_GAP = {name: params["e_bg_dft"] for name, params in TMD_KP_PARAMS.items()}
 _TMD_TAGS = {
     "MoS2": ["谷物理", "光伏", "经典"],
     "MoSe2": ["谷物理"],
