@@ -34,3 +34,5 @@ screening.db
 papers/arxiv/
 examples/output/
 results/
+# 误放的本地资料：与项目无关，保留在本地但不入库
+loongarch_exp.pdf
