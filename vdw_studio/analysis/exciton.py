@@ -47,12 +47,11 @@ from typing import Optional
 import numpy as np
 import scipy.linalg
 from scipy import special
+from ..constants import HBAR2_OVER_2M0
 from ..numerics import finite_scalar, integer
 
 # e²/(4πε₀) = 14.3996 eV·Å（库仑常数）
 COULOMB_CONST = 14.3996
-# ħ²/(2m₀) = 3.809982 eV·Å²（用于 μ 标度）
-HBAR2_OVER_2M0 = 3.809982
 # Rydberg（m₀, ε=1）: 13.6057 eV
 RY = 13.6057
 
