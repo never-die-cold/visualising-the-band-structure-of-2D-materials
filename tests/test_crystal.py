@@ -140,6 +140,12 @@ class TestSupercell:
         with pytest.raises(ValueError):
             c.supercell((0, 1, 1))
 
+    @pytest.mark.parametrize("rep", [(2.7, 1, 1), (True, 1, 1), (2, 1), (2, 1, 1, 1)])
+    def test_non_integer_rep_is_rejected(self, rep):
+        """浮点倍数不得被静默截断（2.7 → 2），维度也必须为 3。"""
+        with pytest.raises(ValueError):
+            make_simple_cubic().supercell(rep)
+
 
 class TestNeighborSearchBounds:
     def test_oblique_cell_finds_all_images(self):

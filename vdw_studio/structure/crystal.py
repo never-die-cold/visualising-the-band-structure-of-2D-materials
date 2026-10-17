@@ -19,6 +19,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 import numpy as np
 
 from ..elements import get_element
+from ..numerics import integer
 from .lattice import Lattice
 
 
@@ -179,9 +180,10 @@ class Crystal:
     # ------------------------------------------------------------------
     def supercell(self, rep: Sequence[int]) -> "Crystal":
         """生成超胞。``rep`` 为 (nx, ny, nz) 整数倍数，必须 ≥ 1。"""
-        nx, ny, nz = (int(v) for v in rep)
-        if min(nx, ny, nz) < 1:
-            raise ValueError(f"超胞倍数必须 ≥ 1, 收到 {rep}")
+        values = tuple(rep)
+        if len(values) != 3:
+            raise ValueError(f"超胞倍数必须是三个整数, 收到 {rep}")
+        nx, ny, nz = (integer(v, 'supercell rep', minimum=1) for v in values)
         m = self.lattice.matrix.copy()
         m[0] *= nx
         m[1] *= ny
