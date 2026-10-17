@@ -31,7 +31,6 @@ from vdw_studio.analysis.berry import (
     optical_circular_dichroism,
     valley_chern,
 )
-from vdw_studio.engine.kp_tmd import TMDKpModel, TMDKpParams
 from vdw_studio.presets import run_preset
 from vdw_studio.visualization import setup_cjk_fonts
 
@@ -39,7 +38,7 @@ from vdw_studio.visualization import setup_cjk_fonts
 def main() -> None:
     out = Path(__file__).parent / "output"
     out.mkdir(exist_ok=True)
-    has_cjk = setup_cjk_fonts()
+    setup_cjk_fonts()
 
     r = run_preset("mos2_kp")
     kp = r["model"]

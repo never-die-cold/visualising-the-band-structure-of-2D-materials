@@ -25,7 +25,6 @@ import argparse
 
 from vdw_studio.analysis import analyze_gap, solve_exciton
 from vdw_studio.engine.models import (
-    BilayerGrapheneModel,
     BuckledHoneycombModel,
     HoneycombModel,
     PhosphoreneRudenko,

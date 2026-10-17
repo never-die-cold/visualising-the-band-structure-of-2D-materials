@@ -1,5 +1,4 @@
 """Independent state counting, component additivity and DOSCAR regressions."""
-from pathlib import Path
 
 import numpy as np
 import pytest

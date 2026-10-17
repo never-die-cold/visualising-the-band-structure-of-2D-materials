@@ -6,7 +6,6 @@ matplotlib.use("Agg")
 import numpy as np
 import pytest
 
-from vdw_studio.analysis import analyze_gap
 from vdw_studio.engine.kpath import KPath
 from vdw_studio.engine.models import HoneycombModel, PhosphoreneRudenko
 from vdw_studio.engine.solver import solve_bands, solve_dos

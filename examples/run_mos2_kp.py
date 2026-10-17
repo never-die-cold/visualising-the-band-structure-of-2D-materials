@@ -21,12 +21,10 @@ from pathlib import Path
 
 import numpy as np
 
-from vdw_studio.analysis import analyze_gap, effective_mass, principal_masses
-from vdw_studio.engine.kp_tmd import TMDKpModel, TMDKpParams
+from vdw_studio.engine.kp_tmd import TMDKpModel
 from vdw_studio.engine.kpath import KPath
-from vdw_studio.engine.solver import solve_bands, solve_dos
 from vdw_studio.presets import run_preset
-from vdw_studio.visualization import plot_band_structure, plot_bz_path, plot_dos
+from vdw_studio.visualization import plot_bz_path
 
 
 def main() -> None:
@@ -36,7 +34,7 @@ def main() -> None:
     r = run_preset("mos2_kp")
     kp: TMDKpModel = r["model"]
     gap = r["gap"]
-    print(f"材料: 单层 MoS2 (k·p, Kormányos 2015)")
+    print("材料: 单层 MoS2 (k·p, Kormányos 2015)")
     print(f"K 点最小带隙: {gap.gap:.3f} eV (文献 1.670 eV, "
           f"匹配: {r['gap_matches_ref']})")
 

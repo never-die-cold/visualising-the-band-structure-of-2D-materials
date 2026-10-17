@@ -70,7 +70,7 @@ def graphene_vf_curve() -> None:
 
 def phosphorene_gap_curve() -> None:
     out = Path(__file__).parent / "output"
-    has_cjk = setup_cjk_fonts()
+    setup_cjk_fonts()
     p0 = PhosphoreneRudenko()
     gap0 = analyze_gap(p0, n_per_segment=24).gap
     strains = np.linspace(-0.04, 0.04, 17)

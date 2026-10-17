@@ -25,11 +25,9 @@ from vdw_studio.engine.zahid_mos2 import (
     INTEGRALS_SMO_H,
     INTEGRALS_SMO_S,
     INTEGRALS_SS_H,
-    INTEGRALS_SS_S,
     ONSITE,
     SIX_MIRROR_IMAGES,
     ZahidMoS2Model,
-    angular_momentum_matrices,
     onsite_soc,
 )
 

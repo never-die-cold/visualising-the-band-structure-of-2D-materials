@@ -7,7 +7,6 @@
 - 黑磷烯：Γ 直接带隙 1.52 eV、主质量 (0.167, 0.849) m₀、各向异性 > 3×
 """
 
-import numpy as np
 import pytest
 
 from vdw_studio.analysis import (
@@ -16,7 +15,6 @@ from vdw_studio.analysis import (
     fermi_velocity,
     principal_masses,
 )
-from vdw_studio.engine.kpath import KPath
 from vdw_studio.engine.models import HoneycombModel, PhosphoreneRudenko
 
 

@@ -1,6 +1,5 @@
 """Physical path calibration and independently specified parabolic mass fits."""
 
-from pathlib import Path
 
 import numpy as np
 import pytest

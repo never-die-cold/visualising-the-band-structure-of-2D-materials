@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pathlib import Path
 
-from vdw_studio.analysis import analyze_gap, principal_masses
+from vdw_studio.analysis import principal_masses
 from vdw_studio.engine.kpath import KPath
 from vdw_studio.engine.models import PhosphoreneRudenko
 from vdw_studio.engine.solver import solve_bands, solve_dos
@@ -40,7 +40,7 @@ def main() -> None:
     r = run_preset("phosphorene")
     model: PhosphoreneRudenko = r["model"]
     gap = r["gap"]
-    print(f"材料: 黑磷烯 (四带 TB, Rudenko 2014)")
+    print("材料: 黑磷烯 (四带 TB, Rudenko 2014)")
     print(f"Γ 点直接带隙: {gap.gap:.3f} eV (文献模型值 1.52 eV, "
           f"匹配: {r['gap_matches_ref']})")
 

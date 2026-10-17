@@ -12,7 +12,6 @@
 import numpy as np
 import pytest
 
-from vdw_studio.structure import Lattice
 from vdw_studio.structure.builders import (
     build,
     graphene,

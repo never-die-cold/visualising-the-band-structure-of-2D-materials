@@ -9,7 +9,6 @@
 import numpy as np
 import pytest
 
-from vdw_studio.analysis import fermi_velocity
 from vdw_studio.engine.models import BilayerGrapheneModel, HoneycombModel
 from vdw_studio.engine.solver import solve_dos
 

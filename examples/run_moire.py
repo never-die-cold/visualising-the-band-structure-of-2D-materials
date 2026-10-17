@@ -111,7 +111,7 @@ def main() -> None:
     m_magic = TwistedBilayerGraphene(theta_deg=1.05, n_shells=5)
     w_flat = m_magic.flat_band_width(n_grid=12)
     print("\n=== 转角双层石墨烯（BM 连续模型）报告 ===")
-    print(f"  w = 110 meV，ħv = 5.755 eV·Å（Reich 2002）")
+    print("  w = 110 meV，ħv = 5.755 eV·Å（Reich 2002）")
     print(f"  魔角 θ = 1.05°（BM Fig. 3）：|v*|/v = "
           f"{abs(m_magic.dirac_velocity())/m_magic.hbar_v:.4f}")
     print(f"  魔角平带带宽（12×12 BZ 采样）：{w_flat*1e3:.2f} meV")

@@ -55,7 +55,6 @@ class TestGenerate:
         lat = Lattice.hexagonal(2.46)
         kp = KPath.for_lattice(lat)
         kcart, _, _ = kp.generate(lat, n_per_segment=10)
-        recip = lat.reciprocal_matrix
         assert np.allclose(kcart[0], np.zeros(3), atol=1e-12)
         assert np.allclose(kcart[-1], np.zeros(3), atol=1e-12)
         # 中间 tick = M, K, 回到 Γ

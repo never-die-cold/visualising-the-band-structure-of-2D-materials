@@ -3,7 +3,7 @@
 import pytest
 
 from vdw_studio.analysis import fermi_velocity, principal_masses
-from vdw_studio.presets import PRESETS, get_preset, list_presets, run_preset
+from vdw_studio.presets import get_preset, list_presets, run_preset
 
 
 class TestRegistry:
