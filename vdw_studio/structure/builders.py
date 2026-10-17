@@ -162,6 +162,10 @@ def tmd_bilayer(name: str = "MoS2", a: Optional[float] = None,
     （金属位 (1/3,2/3) ↔ (2/3,1/3) 交换——2H 堆叠的特征），
     Mo–Mo 跨层距离默认取 2H-MoS₂ 体相 c/2 = 6.15 Å。
 
+    **仅提供结构**：``BUILDERS`` 中的 ``<name>_2h`` 键可用于结构查看与
+    POSCAR/XYZ 导出，但没有对应的 TB/k·p 模型，也没有仿真预设——不要
+    把 ``build('mos2_2h')`` 的结果传给 ``simulate()``。
+
     验证锚点：层内 Mo–S 键长与单层一致；跨层最近邻为 S–S
     （≈3.5 Å vdW 接触），Mo–Mo 跨层 = interlayer。
     """
