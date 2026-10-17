@@ -415,7 +415,7 @@ class MainWindow(QMainWindow):
         self._update_dos()
 
     def set_dos_sigma(self, sigma: float):
-        self._update_dos(sigma=sigma)
+        self._update_dos()
         self._pending_config['dos_sigma'] = sigma
         self._config_timer.start(CONFIG_FLUSH_DEBOUNCE_MS)
 
@@ -445,7 +445,8 @@ class MainWindow(QMainWindow):
         if pending:
             self._persist_config(self.config.update, pending)
 
-    def _update_dos(self, sigma: float = None):
+    def _update_dos(self):
+        """排程一次 DOS 刷新（σ 等参数由 _start_dos_refresh 从控件读取）。"""
         if self.current_data is None or self._closing:
             return
         self._dos_request += 1
