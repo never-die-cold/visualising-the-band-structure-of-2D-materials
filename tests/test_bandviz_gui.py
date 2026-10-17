@@ -234,3 +234,19 @@ def test_fermi_and_range_refresh_reuse_artists(app):
         assert widget.ax.get_ylim() == pytest.approx((-1.0, 1.0))
     finally:
         widget.close()
+
+
+def test_metal_edges_are_labeled_as_sampled(app):
+    """金属/零隙时 VBM/CBM 只是采样带边估计，标签必须带 Sampled 限定。"""
+    panel = ControlPanel()
+    try:
+        panel.update_analysis({'gap': None, 'status': 'metal', 'vbm': 1.0,
+                               'cbm': 0.9, 'reason': 'bands overlap'})
+        assert panel.label_vbm.text() == "Sampled VBM: 1 eV"
+        assert panel.label_cbm.text() == "Sampled CBM: 0.9 eV"
+        panel.update_analysis({'gap': 1.2, 'status': 'insulator', 'vbm': -0.5,
+                               'cbm': 0.7, 'direct': True, 'reason': ''})
+        assert panel.label_vbm.text() == "VBM: -0.5 eV"
+        assert panel.label_cbm.text() == "CBM: 0.7 eV"
+    finally:
+        panel.close()

@@ -198,8 +198,15 @@ class ControlPanel(QWidget):
         else:
             self.label_gap.setText("Sampled Gap: undetermined")
         self.label_gap.setToolTip(gap_info.get('reason', ''))
-        self.label_vbm.setText(f"VBM: {gap_info['vbm']:.6g} eV" if gap_info['vbm'] is not None else "VBM: --")
-        self.label_cbm.setText(f"CBM: {gap_info['cbm']:.6g} eV" if gap_info['cbm'] is not None else "CBM: --")
+        # 金属/零隙时 vbm/cbm 只是采样到的带边估计，不是材料的带边；加限定词，
+        # 避免把"某条带在导入 k 点上的极值"读成材料 VBM/CBM。
+        status = gap_info.get('status', 'unknown')
+        prefix = "Sampled " if status in ('metal', 'zero-gap') else ""
+        for key, label, text in (('vbm', self.label_vbm, 'VBM'),
+                                 ('cbm', self.label_cbm, 'CBM')):
+            value = gap_info[key]
+            label.setText(f"{prefix}{text}: {value:.6g} eV" if value is not None
+                          else f"{prefix}{text}: --")
         for edge, label in (('vbm', self.label_vbm_mass), ('cbm', self.label_cbm_mass)):
             report = (mass_reports or {}).get(edge, {})
             mass = report.get('mass_m0')
