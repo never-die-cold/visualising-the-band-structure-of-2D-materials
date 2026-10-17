@@ -32,5 +32,6 @@ class DosWorker(QThread):
             self.completed.emit(result)
         except InterruptedError:
             pass
-        except Exception:
-            self.error.emit(traceback.format_exc())
+        except Exception as exc:
+            self.error.emit(f"{type(exc).__name__}: {exc}\n"
+                            f"{traceback.format_exc()}")

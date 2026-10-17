@@ -85,7 +85,7 @@ class ParseWorker(QThread):
         except InterruptedError:
             self.cancelled.emit()
 
-        except Exception:
-            # 保留完整栈：核心 bug（AttributeError/MemoryError 等）不应只剩
-            # 一行 str(exc)，否则日志里没有任何排查线索。
-            self.error.emit(traceback.format_exc())
+        except Exception as exc:
+            # 首行保留异常类型与消息（对话框取它），完整栈附在后面的行里。
+            self.error.emit(f"{type(exc).__name__}: {exc}\n"
+                            f"{traceback.format_exc()}")
