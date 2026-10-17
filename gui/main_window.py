@@ -222,7 +222,7 @@ class MainWindow(QMainWindow):
         self._active_load_id = worker.task_id
         self._workers.add(worker)
         worker.progress.connect(lambda message: self._on_worker_progress(message) if self._accepts_import(worker) else None)
-        worker.finished.connect(lambda *values: self._accept_import(worker, *values))
+        worker.loaded.connect(lambda *values: self._accept_import(worker, *values))
         worker.error.connect(lambda message: self._on_worker_error(message) if self._accepts_import(worker) else None)
         worker.cancelled.connect(lambda: self._on_import_cancelled(worker))
         self._worker.start()

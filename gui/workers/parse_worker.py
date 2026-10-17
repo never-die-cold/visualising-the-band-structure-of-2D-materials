@@ -18,12 +18,15 @@ class ParseWorker(QThread):
     后台解析线程：解析 EIGENVAL + KPOINTS，计算 DOS。
     信号:
         progress(msg) -> 进度消息
-        finished(data, analyzer, dos_data) -> 完成
+        loaded(data, analyzer, dos_data) -> 完成
         error(msg)    -> 错误
+
+    完成信号刻意不叫 ``finished``：QThread 自带 0 参 ``finished``，重名会
+    遮蔽内置信号，使依赖标准 Qt 生命周期的代码失效。
     """
 
     progress = pyqtSignal(str)
-    finished = pyqtSignal(object, object, object)
+    loaded = pyqtSignal(object, object, object)
     error = pyqtSignal(str)
     cancelled = pyqtSignal()
 
@@ -76,7 +79,7 @@ class ParseWorker(QThread):
 
             self.progress.emit("Done")
             self.check_interruption()
-            self.finished.emit(band_data, analyzer, dos_data)
+            self.loaded.emit(band_data, analyzer, dos_data)
 
         except InterruptedError:
             self.cancelled.emit()

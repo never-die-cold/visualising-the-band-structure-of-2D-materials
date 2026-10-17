@@ -36,7 +36,7 @@ def test_worker_prefers_doscar_and_distinguishes_sampled_spectrum(app, tmp_path,
     worker = ParseWorker(str(file))
     result, errors = [], []
     loop = QEventLoop()
-    worker.finished.connect(lambda *values: (result.extend(values), loop.quit()))
+    worker.loaded.connect(lambda *values: (result.extend(values), loop.quit()))
     worker.error.connect(lambda message: (errors.append(message), loop.quit()))
     timer = QTimer()
     timer.setSingleShot(True)
@@ -82,7 +82,7 @@ def test_physical_lattice_worker_and_visible_mass_diagnostics(app, tmp_path, cal
     worker = ParseWorker(str(file))
     result, errors = [], []
     loop = QEventLoop()
-    worker.finished.connect(lambda *values: (result.extend(values), loop.quit()))
+    worker.loaded.connect(lambda *values: (result.extend(values), loop.quit()))
     worker.error.connect(lambda message: (errors.append(message), loop.quit()))
     timeout = QTimer()
     timeout.setSingleShot(True)
@@ -126,7 +126,7 @@ def test_real_vasp_worker_completes_and_plots_all_channels(app, name, spin, band
     def failed(message):
         errors.append(message)
         loop.quit()
-    worker.finished.connect(finished)
+    worker.loaded.connect(finished)
     worker.error.connect(failed)
     timeout = QTimer()
     timeout.setSingleShot(True)
