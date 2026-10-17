@@ -302,7 +302,11 @@ class ZahidMoS2Model:
                     if abs(dist - bond_len) < 0.05 * bond_len:
                         bonds.append((i, 0, d, "SMo"))
                         count += 1
-            assert count == 3, f"S{i} 的 Mo 近邻数 = {count} (应为 3)"
+            # 显式校验而非 assert：python -O 会移除 assert，届时错误的键表
+            # 会被静默接受。
+            if count != 3:
+                raise ValueError(
+                    f"S{i} 的 Mo 近邻数 = {count}（应为 3）：键长容差或晶格常数有误")
         # 同亚层 S–S、Mo–Mo 六近邻（面内距离 = a；γ=120° 六方格子）。
         # 默认取 ± 对中的代表镜像，配合共轭填充覆盖全部 6 近邻并保证
         # H(k)/S(k) 厄米（SK 矩阵元对 R̂ 含奇宇称通道）。
