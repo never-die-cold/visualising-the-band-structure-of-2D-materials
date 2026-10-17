@@ -42,7 +42,7 @@ from ..visualization import (
     plot_structure,
     setup_cjk_fonts,
 )
-from .workers import SimulationWorker
+from .workers import MoireWorker, SimulationWorker
 from ..task_state import SimulationSnapshot, align_structure
 from ..visualization.fonts import plot_text
 
@@ -69,6 +69,8 @@ class MainWindow(QMainWindow):
         self.structure = None
         self.model = None
         self.worker: Optional[SimulationWorker] = None
+        self.moire_worker: Optional[MoireWorker] = None
+        self._finished_worker: Optional[SimulationWorker] = None
         self._results: dict = {}
         self._active_snapshot = None
         self._base_structure = None
@@ -422,28 +424,53 @@ class MainWindow(QMainWindow):
 
     def _poll_worker(self) -> None:
         """主线程轮询后台线程的进度与完成状态。"""
+        self._poll_simulation()
+        self._poll_moire()
+        simulation_idle = (self.worker is None
+                           or self._finished_worker is self.worker)
+        if simulation_idle and self.moire_worker is None:
+            self._poll_timer.stop()
+
+    def _poll_simulation(self) -> None:
         w = self.worker
-        if w is None:
+        if w is None or self._finished_worker is w:
             return
         msgs = w.progress_messages
         while self._progress_seen < len(msgs):
             self.log(msgs[self._progress_seen])
             self._progress_seen += 1
-        if w.done and not w.isRunning():
-            self._poll_timer.stop()
-            if self._closing:
-                self.close()
-            elif w.cancelled:
-                self._active_snapshot = None
-                self.progress.setRange(0, 1)
-                self.progress.setValue(0)
-                self._set_busy(False)
-                self.status_label.setText('已取消')
-                self.log('仿真已取消。')
-            elif w.error:
-                self._on_error(w.error)
-            else:
-                self._on_results(w.result)
+        if not (w.done and not w.isRunning()):
+            return
+        # 保留 worker 引用供诊断/测试读取；用已处理标记防止重复回调。
+        self._finished_worker = w
+        if self._closing:
+            self.close()
+        elif w.cancelled:
+            self._active_snapshot = None
+            self.progress.setRange(0, 1)
+            self.progress.setValue(0)
+            self._set_busy(False)
+            self.status_label.setText('已取消')
+            self.log('仿真已取消。')
+        elif w.error:
+            self._on_error(w.error)
+        else:
+            self._on_results(w.result)
+
+    def _poll_moire(self) -> None:
+        w = self.moire_worker
+        if w is None or not w.done or w.isRunning():
+            return
+        self.moire_worker = None
+        self.moire_button.setEnabled(True)
+        if self._closing:
+            return
+        if w.error:
+            self.status_label.setText("moiré 计算失败")
+            self.log(f"[错误] moiré: {w.error.splitlines()[0]}")
+            return
+        self._on_moire_results(w.result)
+        self.status_label.setText("就绪")
 
     def _on_results(self, results: dict) -> None:
         snapshot = results.get('snapshot')
@@ -575,61 +602,59 @@ class MainWindow(QMainWindow):
     # moiré 预览（转角双层石墨烯，独立于材料预设管线）
     # ------------------------------------------------------------------
     def update_moire(self, n_shells: int = 4, n_seg: int = 30) -> None:
-        """绘制当前转角的 moiré 能带并报告 v*/v 与平带带宽。
+        """启动后台 moiré 计算；完成后由 :meth:`_on_moire_results` 绘图。
 
-        计算 2–3 秒（同步执行，先刷新状态文本）；模型与验证锚点见
-        ``engine.moire``（BM 2011，魔角 1.05°）。
+        模型与验证锚点见 ``engine.moire``（BM 2011，魔角 1.05°）。计算在
+        :class:`MoireWorker` 中进行，主线程只做轮询与绘图。
         """
-        from PyQt5.QtWidgets import QApplication
-        from ..engine.moire import TwistedBilayerGraphene
-
         theta = float(self.moire_theta_spin.value())
         self.status_label.setText(f"计算 moiré 能带（θ = {theta}°）…")
         self.moire_button.setEnabled(False)
-        QApplication.processEvents()          # 先刷新状态栏，再进入重计算
-        try:
-            model = TwistedBilayerGraphene(theta_deg=theta,
-                                           n_shells=n_shells)
-            path, labels, ticks = model.moire_path(n_seg=n_seg)
-            E = model.bands(list(path))
-            v_rel = model.dirac_velocity() / model.hbar_v
-            width_mev = model.flat_band_width(n_grid=12) * 1e3
+        self.moire_worker = MoireWorker(theta, n_shells=n_shells,
+                                        n_seg=n_seg, parent=self)
+        self.moire_worker.start()
+        self._poll_timer.start(80)
 
-            fig = self.moire_canvas.fig
-            fig.clf()
-            ax = fig.add_subplot(111)
-            x = np.arange(len(path))
-            n0 = E.shape[1] // 2
-            for b in range(n0 - 3, min(n0 + 4, E.shape[1])):
-                flat_pair = b in (n0 - 1, n0)
-                ax.plot(x, E[:, b] * 1e3, lw=(1.6 if flat_pair else 0.9),
-                        color=("#c0392b" if flat_pair else "#7f8c8d"),
-                        alpha=(0.95 if flat_pair else 0.8))
-            ax.axhline(0.0, color="k", lw=0.6, ls="--", alpha=0.6)
-            for t, lab in zip(ticks, labels):
-                ax.axvline(t, color="k", lw=0.5, alpha=0.3)
-            ax.set_xticks(ticks)
-            ax.set_xticklabels(labels)
-            ax.set_ylabel("E (meV)")
-            ax.set_title(f"moiré 能带（θ = {theta}°，w = 110 meV，"
-                         f"Γ$_m$-M-K-Γ$_m$）", fontsize=10)
-            # 窗口按低能带自适应；固定 ±80 meV 在大转角会裁掉能带。
-            shown = E[:, max(0, n0 - 3):min(n0 + 4, E.shape[1])] * 1e3
-            limit = max(80.0, float(np.abs(shown).max()) * 1.15)
-            ax.set_ylim(-limit, limit)
-            fig.tight_layout()
-            self.moire_canvas.draw_idle()
+    def _on_moire_results(self, result: dict) -> None:
+        """在主线程绘制 worker 返回的 moiré 结果。"""
+        theta = result["theta"]
+        E = result["energies"]
+        labels, ticks = result["labels"], result["ticks"]
 
-            self.moire_label.setText(
-                f"v*/v = {v_rel:+.3f}；平带带宽 ≈ {width_mev:.1f} meV；"
-                f"moiré 周期 = {model.geom.l_moire:.0f} Å")
-            self.log(f"moiré: θ = {theta}°（α = {model.alpha:.3f}）→ "
-                     f"v*/v = {v_rel:+.4f}, 平带带宽 = {width_mev:.2f} meV, "
-                     f"moiré 周期 = {model.geom.l_moire:.1f} Å")
-            self.tabs.setCurrentWidget(self.moire_canvas)
-        finally:
-            self.moire_button.setEnabled(True)
-            self.status_label.setText("就绪")
+        fig = self.moire_canvas.fig
+        fig.clf()
+        ax = fig.add_subplot(111)
+        x = np.arange(E.shape[0])
+        n0 = E.shape[1] // 2
+        for b in range(n0 - 3, min(n0 + 4, E.shape[1])):
+            flat_pair = b in (n0 - 1, n0)
+            ax.plot(x, E[:, b] * 1e3, lw=(1.6 if flat_pair else 0.9),
+                    color=("#c0392b" if flat_pair else "#7f8c8d"),
+                    alpha=(0.95 if flat_pair else 0.8))
+        ax.axhline(0.0, color="k", lw=0.6, ls="--", alpha=0.6)
+        for t, lab in zip(ticks, labels):
+            ax.axvline(t, color="k", lw=0.5, alpha=0.3)
+        ax.set_xticks(ticks)
+        ax.set_xticklabels(labels)
+        ax.set_ylabel("E (meV)")
+        ax.set_title(f"moiré 能带（θ = {theta}°，w = 110 meV，"
+                     f"Γ$_m$-M-K-Γ$_m$）", fontsize=10)
+        # 窗口按低能带自适应；固定 ±80 meV 在大转角会裁掉能带。
+        shown = E[:, max(0, n0 - 3):min(n0 + 4, E.shape[1])] * 1e3
+        limit = max(80.0, float(np.abs(shown).max()) * 1.15)
+        ax.set_ylim(-limit, limit)
+        fig.tight_layout()
+        self.moire_canvas.draw_idle()
+
+        self.moire_label.setText(
+            f"v*/v = {result['v_rel']:+.3f}；"
+            f"平带带宽 ≈ {result['width_mev']:.1f} meV；"
+            f"moiré 周期 = {result['l_moire']:.0f} Å")
+        self.log(f"moiré: θ = {theta}°（α = {result['alpha']:.3f}）→ "
+                 f"v*/v = {result['v_rel']:+.4f}, "
+                 f"平带带宽 = {result['width_mev']:.2f} meV, "
+                 f"moiré 周期 = {result['l_moire']:.1f} Å")
+        self.tabs.setCurrentWidget(self.moire_canvas)
 
     # ------------------------------------------------------------------
     # 导出
@@ -661,9 +686,12 @@ class MainWindow(QMainWindow):
         self.log_box.appendPlainText(msg)
 
     def closeEvent(self, event):  # noqa: N802 (Qt 命名)
-        if self.worker is not None and self.worker.isRunning():
+        simulation_running = self.worker is not None and self.worker.isRunning()
+        moire_running = self.moire_worker is not None and self.moire_worker.isRunning()
+        if simulation_running or moire_running:
             self._closing = True
-            self.cancel_simulation()
+            if simulation_running:
+                self.cancel_simulation()
             event.ignore()
             if not self._poll_timer.isActive():
                 self._poll_timer.start(80)

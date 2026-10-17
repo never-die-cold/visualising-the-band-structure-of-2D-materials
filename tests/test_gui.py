@@ -233,15 +233,34 @@ class TestMainWindow:
 class TestMoireTab:
     """moiré（转角）标签页：θ 控制 + 能带绘制 + 报告（独立于预设管线）。"""
 
+    @staticmethod
+    def _run(win, **kwargs):
+        """启动后台 moiré 计算并等待完成（走与 GUI 相同的轮询路径）。"""
+        from PyQt5.QtCore import QEventLoop, QTimer
+
+        loop, poll, timeout = QEventLoop(), QTimer(), QTimer()
+        timeout.setSingleShot(True)
+        timeout.timeout.connect(loop.quit)
+        poll.timeout.connect(lambda: loop.quit() if win.moire_worker is None else None)
+        try:
+            win.update_moire(**kwargs)
+            poll.start(20)
+            timeout.start(60000)
+            loop.exec_()
+        finally:
+            poll.stop()
+            timeout.stop()
+        assert win.moire_worker is None, "moiré 计算未在超时内完成"
+
     def test_moire_tab_updates(self, app):
         win = MainWindow()
         try:
             # 标签页存在
             titles = [win.tabs.tabText(i) for i in range(win.tabs.count())]
             assert "moiré (转角)" in titles
-            # 魔角计算并绘图
+            # 魔角计算并绘图（后台线程 + 轮询）
             win.moire_theta_spin.setValue(1.05)
-            win.update_moire(n_shells=3, n_seg=12)
+            self._run(win, n_shells=3, n_seg=12)
             fig = win.moire_canvas.fig
             assert len(fig.axes) == 1
             ax = fig.axes[0]
@@ -254,7 +273,7 @@ class TestMoireTab:
             assert abs(v_rel) < 0.05
             # 远离魔角时速度应显著更大
             win.moire_theta_spin.setValue(2.0)
-            win.update_moire(n_shells=3, n_seg=12)
+            self._run(win, n_shells=3, n_seg=12)
             v_rel_2 = float(win.moire_label.text().split("v*/v =")[1].split("；")[0])
             assert abs(v_rel_2) > 3 * abs(v_rel)
         finally:
