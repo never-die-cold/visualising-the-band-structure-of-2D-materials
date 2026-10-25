@@ -94,5 +94,6 @@ T15 之后的科研推进（T16/T17 门槛轮次）与本轮复核不在上表�
 | 7 | 状态与测试基建：Clear Recent 持久化、最近文件单源、VASP/Qt 共享测试助手、取消基类、错误格式统一、pip 缓存、ISPIN=2 说明、画布重建 helper（含一次 revert） | `34bc494` … `19c0341` |
 | 8 | **大目标 A**：DFT→TB 自拟合管线——SK 模型参数化（深拷贝隔离）、`fitting/` 模块（参数向量/投影权重/残差/最小二乘）、合成往返验证；投影公式修正波及 0.74 数字更正 | `b9eba5e` … |
 | 9 | **大目标 B**：Wannier90 互操作——`_hr.dat` 读写、周期插值模型、solver/带隙/DOS 全链接入、合成往返验证 | `62315bd` |
+| 10 | **大目标 C**：转角 TMD 层间激子（T17 收官）——单带连续 moiré 模型（四个解析锚点）、moiré 质量 → 约化质量 → Keldysh DVR 管线（t=0 衔接 Berkelbach 链）、Eb(θ) 示例；顺带修正 moiré 质量的 2 倍因子与 vb 带顶索引 | `f47597d` … |
 
-完整列表见 `git log --oneline 6cf5dbe..HEAD`（共 88 条，含 1 条 revert）。
+完整列表见 `git log --oneline 6cf5dbe..HEAD`（共 95 条，含 1 条 revert）。
