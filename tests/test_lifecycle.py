@@ -16,7 +16,7 @@ from vdw_studio.engine.solver import solve_dos
 from vdw_studio.analysis.properties import analyze_gap
 from vdw_studio.analysis.berry import valley_report
 from vdw_studio.engine.models import HoneycombModel
-from test_task_state import wait_until
+from qt_helpers import root_window, wait_until
 from vasp_fixtures import write_eigenval
 
 
@@ -106,16 +106,6 @@ def test_vdw_cancel_and_close_wait_for_thread_without_blocking_ui(app, monkeypat
         if win.worker is not None:
             win.worker.wait(10000)
         win.close()
-
-
-def root_window(tmp_path, monkeypatch):
-    import gui.main_window as module
-    from storage.config_manager import ConfigManager
-    from storage.database import Database
-    monkeypatch.setattr(module, 'ConfigManager', lambda *args: ConfigManager(str(tmp_path / 'settings.json')))
-    monkeypatch.setattr(module, 'Database', lambda *args: Database(str(tmp_path / 'test.db')))
-    monkeypatch.setattr(module.MainWindow, '_init_example_data', lambda self: None)
-    return module.MainWindow()
 
 
 def test_bandviz_close_defers_destruction_until_import_thread_exits(app, tmp_path, monkeypatch):

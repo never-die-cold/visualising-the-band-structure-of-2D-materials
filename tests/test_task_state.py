@@ -81,18 +81,7 @@ def app():
     return QApplication.instance() or QApplication([])
 
 
-def wait_until(app, predicate, milliseconds=15000):
-    from PyQt5.QtCore import QEventLoop, QTimer
-    loop, poll, timeout = QEventLoop(), QTimer(), QTimer()
-    timeout.setSingleShot(True)
-    timeout.timeout.connect(loop.quit)
-    poll.timeout.connect(lambda: loop.quit() if predicate() else None)
-    poll.start(20)
-    timeout.start(milliseconds)
-    loop.exec_()
-    poll.stop()
-    timeout.stop()
-    assert predicate(), 'Timed out waiting for GUI state'
+from qt_helpers import wait_until  # noqa: F401 — 兼容旧导入路径
 
 
 def test_strained_geometry_tree_and_export_follow_exact_model_without_accumulation(app, tmp_path, monkeypatch):
