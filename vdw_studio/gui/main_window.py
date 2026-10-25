@@ -623,9 +623,7 @@ class MainWindow(QMainWindow):
         E = result["energies"]
         labels, ticks = result["labels"], result["ticks"]
 
-        fig = self.moire_canvas.fig
-        fig.clf()
-        ax = fig.add_subplot(111)
+        ax = self._fresh_axis(self.moire_canvas)
         x = np.arange(E.shape[0])
         n0 = E.shape[1] // 2
         for b in range(n0 - 3, min(n0 + 4, E.shape[1])):
