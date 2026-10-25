@@ -40,9 +40,10 @@ class SimulationWorker(QThread):
                  n_valence: Optional[int] = None, parent=None, *,
                  lattice=None, include_valley: bool = False, snapshot=None) -> None:
         super().__init__(parent)
-        self.model = deepcopy(model)
-        if snapshot is not None and encode_model_state(self.model) != snapshot.model_state_json:
+        # 先校验再拷贝：快照不匹配时不必为大模型付出 deepcopy 的开销
+        if snapshot is not None and encode_model_state(model) != snapshot.model_state_json:
             raise ValueError('Runtime model does not match the immutable task snapshot')
+        self.model = deepcopy(model)
         self.n_per_segment = n_per_segment if snapshot is None else snapshot.n_per_segment
         self.dos_mesh = tuple(dos_mesh) if snapshot is None else snapshot.dos_mesh
         self.dos_sigma = dos_sigma if snapshot is None else snapshot.dos_sigma
