@@ -9,24 +9,11 @@ import pytest
 
 from core.band_analyzer import BandAnalyzer
 from core.parser import BandData, VASPEigenvalParser, VASPKpointsParser
+from vasp_fixtures import write_eigenval_simple as write_eigenval  # noqa: F401 — 兼容旧导入路径
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "vasp"
 ROOT = Path(__file__).resolve().parents[1]
-
-
-def write_eigenval(tmp_path, points=None, ispin=1, nelect=2):
-    if points is None:
-        points = [[0, 0, 0], [.25, 0, 0], [.5, 0, 0]]
-    lines = [f"1 1 1 {ispin}", "1 1 1 1 0", "0", "CAR", "Regression fixture",
-             f"{nelect} {len(points)} 2"]
-    for point in points:
-        lines.extend(["", " ".join(map(str, point)) + " 0.25"])
-        lines.extend(["1 -1 2", "2 2 0"] if ispin == 1 else
-                     ["1 -1 -0.5 1 0.75", "2 2 0.8 0 0.25"])
-    path = tmp_path / "EIGENVAL"
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return path
 
 
 def write_kpoints(tmp_path, text):

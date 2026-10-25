@@ -6,26 +6,7 @@ import pytest
 
 from core.parser import BandData, VASPEigenvalParser, VASPLatticeParser
 from core.band_analyzer import BandAnalyzer
-
-
-RAW = np.array([[2., 0, 0], [-1, np.sqrt(3), 0], [0, 0, 12.]])
-
-
-def write_poscar(tmp_path, scale="1", matrix=RAW):
-    path = tmp_path / "POSCAR"
-    path.write_text("Lattice fixture\n" + scale + "\n" +
-                    "\n".join(" ".join(map(str, row)) for row in matrix) + "\n", encoding="utf-8")
-    return path
-
-
-def write_eigenval(tmp_path, points, energies=None):
-    lines = ["1 1 1 1", "1 1 1 1 0", "0", "CAR", "Physical regression", f"2 {len(points)} 2"]
-    for i, point in enumerate(points):
-        ev, ec = (-1, 2) if energies is None else energies[i]
-        lines.extend(["", " ".join(map(str, point)) + " 1", f"1 {ev} 2", f"2 {ec} 0"])
-    path = tmp_path / "EIGENVAL"
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return path
+from vasp_fixtures import RAW, write_poscar, write_eigenval  # noqa: F401 — 兼容旧导入路径
 
 
 @pytest.mark.parametrize("scale, factor", [("2", 2), (str(-abs(np.linalg.det(RAW)) * 8), 2)])
