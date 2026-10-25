@@ -48,6 +48,7 @@ SK 角因子的构造与验证见 ``slater_koster.py``。
 
 from __future__ import annotations
 
+import copy
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -291,7 +292,9 @@ class ZahidMoS2Model:
                               else tuple((int(dx), int(dy)) for dx, dy in mirror_images))
         self.conjugate_fill = bool(conjugate_fill)
         self.name = "MoS2 sp3d5 (Zahid 2013)"
-        self.tables = {name: dict(table) for name, table in DEFAULT_TABLES.items()}
+        # ONSITE 的值是两层嵌套 dict，浅拷贝会让内层跨实例共享——拟合循环
+        # 改 ONSITE:Mo.d 时会污染模块常量（test_parameter_transcription 抓到过）。
+        self.tables = copy.deepcopy(DEFAULT_TABLES)
         if integrals:
             unknown = set(integrals) - set(self.tables)
             if unknown:

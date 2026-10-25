@@ -72,6 +72,22 @@ class TestParameterVector:
         from vdw_studio.engine.zahid_mos2 import INTEGRALS_SMO_H
         assert INTEGRALS_SMO_H["ddσ"] == pytest.approx(-3.1425)
 
+    def test_tables_are_instance_private(self):
+        """两个模型的积分表互不影响，模块常量也不被就地修改波及。
+
+        ONSITE 是两层嵌套 dict，浅拷贝会让内层跨实例共享——拟合改
+        ONSITE:Mo.d 曾把模块 ONSITE 一并改掉（全量跑序下
+        test_parameter_transcription 因此失败）。
+        """
+        import vdw_studio.engine.zahid_mos2 as zahid
+        first = ZahidMoS2Model(soc=False)
+        second = ZahidMoS2Model(soc=False)
+        apply_overrides(first, {"ONSITE:Mo.d": 9.9, "SMo_H:ddσ": -9.9})
+        assert get_parameter(second, "ONSITE:Mo.d") == pytest.approx(2.6429)
+        assert get_parameter(second, "SMo_H:ddσ") == pytest.approx(-3.1425)
+        assert zahid.ONSITE["Mo"]["d"] == pytest.approx(2.6429)
+        assert zahid.INTEGRALS_SMO_H["ddσ"] == pytest.approx(-3.1425)
+
 
 class TestProjection:
     def test_single_full_basis_group_is_exactly_one(self):
