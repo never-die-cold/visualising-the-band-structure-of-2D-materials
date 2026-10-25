@@ -96,4 +96,4 @@ T15 之后的科研推进（T16/T17 门槛轮次）与本轮复核不在上表�
 | 9 | **大目标 B**：Wannier90 互操作——`_hr.dat` 读写、周期插值模型、solver/带隙/DOS 全链接入、合成往返验证 | `62315bd` |
 | 10 | **大目标 C**：转角 TMD 层间激子（T17 收官）——单带连续 moiré 模型（四个解析锚点）、moiré 质量 → 约化质量 → Keldysh DVR 管线（t=0 衔接 Berkelbach 链）、Eb(θ) 示例；顺带修正 moiré 质量的 2 倍因子与 vb 带顶索引 | `f47597d` … |
 
-完整列表见 `git log --oneline 6cf5dbe..HEAD`（共 95 条，含 1 条 revert）。
+完整列表见 `git log --oneline 6cf5dbe..HEAD`（共 90 条，含 1 条 revert）。
