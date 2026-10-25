@@ -62,17 +62,22 @@ def swap_sigma_roles(integrals: dict) -> dict:
 
 
 def d_m2_weight(model, k=K_POINT, n_valence=N_VALENCE, atom=0) -> float:
-    """价带顶态在 m=±2（d_x²−y² / d_xy）子空间上的权重。
+    """价带顶态在 m=±2（d_x²−y² / d_xy）子空间上的 S-正交投影权重。
 
-    广义本征问题 Hψ = E·Sψ 的正交归一以 S 为度规，故子空间 A 上的权重为
-    Σ_{a∈A} |(Sψ)_a|²（a 取单位基矢）。
+    广义本征问题 Hψ = E·Sψ 以 S 为度规，基矢彼此不正交（S_ab ≠ δ），
+    子空间 A 上的权重必须含子空间重叠矩阵的逆：w = c† S_A⁻¹ c，
+    其中 c = (Sψ)_A。此前版本漏掉 S_A⁻¹（得到的是 ‖Sψ‖²，非归一），
+    模块文档与 REFERENCES 记录的"m=±2 权重 0.74"即该错误公式下的产物，
+    已在 2026-10-17 更正并标注待复核——见 ``vdw_studio.fitting.projection``。
     """
     H, S = model.hamiltonian_overlap(k)
     _, v = scipy.linalg.eigh(H, S)
-    s_psi = S @ v[:, n_valence - 1]
-    indices = [atom * ORBITALS_PER_ATOM + orbital * 2 + spin
-               for orbital in _M2_ORBITAL_INDICES for spin in (0, 1)]
-    return float((np.abs(s_psi[indices]) ** 2).sum())
+    s_psi = (S @ v[:, n_valence - 1])
+    indices = np.array([atom * ORBITALS_PER_ATOM + orbital * 2 + spin
+                        for orbital in _M2_ORBITAL_INDICES for spin in (0, 1)])
+    sub = s_psi[indices]
+    S_sub = S[np.ix_(indices, indices)]
+    return float(np.real(sub.conj() @ np.linalg.inv(S_sub) @ sub))
 
 
 def evaluate(model, k=K_POINT, n_valence=N_VALENCE) -> dict:
