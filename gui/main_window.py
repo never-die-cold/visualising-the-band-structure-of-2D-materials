@@ -158,9 +158,8 @@ class MainWindow(QMainWindow):
         self.control_panel.chk_dos_vb.setChecked(self.config.get('dos_show_vb', True))
         self.control_panel.chk_dos_cb.setChecked(self.config.get('dos_show_cb', True))
 
-        # 恢复最近文件
-        for path in self.config.get_recent_files():
-            self.file_tree.add_recent_file(path)
+        # 恢复最近文件（config 是权威源；文件树只负责显示）
+        self.file_tree.set_recent_files(self.config.get_recent_files())
 
     def _persist_config(self, method, *args):
         try:
@@ -332,14 +331,15 @@ class MainWindow(QMainWindow):
         gap_info = analyzer.get_band_gap()
         self.control_panel.update_analysis(gap_info, analyzer.initial_mass_reports)
 
-        # 更新文件树
-        self.file_tree.add_recent_file(str(self.current_file))
-
         # 保存到数据库
         saved = self._save_to_database()
 
-        # 保存配置
-        self._persist_config(self.config.add_recent_file, str(self.current_file))
+        # 最近文件：config 是权威源（去重/置顶/截断只在其中发生），写入后
+        # 让文件树重新渲染；config 落盘失败时退回纯显示更新。
+        if self._persist_config(self.config.add_recent_file, str(self.current_file)):
+            self.file_tree.set_recent_files(self.config.get_recent_files())
+        else:
+            self.file_tree.add_recent_file(str(self.current_file))
         self._save_config()
 
         # 恢复 UI
