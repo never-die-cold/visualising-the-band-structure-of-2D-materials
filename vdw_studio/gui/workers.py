@@ -27,6 +27,11 @@ from ..simulation import simulate
 from ..task_state import encode_model_state
 
 
+def format_error(exc: BaseException) -> str:
+    """后台线程上报错误的统一格式：首行异常摘要，其后完整调用栈。"""
+    return f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+
+
 class SimulationWorker(QThread):
     """按模型能力计算能带、DOS 与性质的后台线程。"""
 
@@ -88,8 +93,7 @@ class SimulationWorker(QThread):
             self.result = None
             self.cancelled = True
         except Exception as exc:  # noqa: BLE001 — 界面需要完整错误上报
-            self.error = (f"{type(exc).__name__}: {exc}\n"
-                          f"{traceback.format_exc()}")
+            self.error = format_error(exc)
         finally:
             self.done = True
 
@@ -136,7 +140,6 @@ class MoireWorker(QThread):
         try:
             self.result = self.compute()
         except Exception as exc:  # noqa: BLE001 — 界面需要完整错误上报
-            self.error = (f"{type(exc).__name__}: {exc}\n"
-                          f"{traceback.format_exc()}")
+            self.error = format_error(exc)
         finally:
             self.done = True
