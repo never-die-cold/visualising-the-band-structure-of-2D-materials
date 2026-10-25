@@ -159,6 +159,18 @@ def band_data(energies, occupations=None, nelect=2, ispin=1, points=None):
                     occupations=None if occupations is None else np.asarray(occupations, dtype=float), ispin=ispin)
 
 
+def test_ispin2_without_occupations_explains_display_zero_classification():
+    """ISPIN=2 且无占据数：通道只能按显示零点位置分类，理由必须明说。
+
+    该分类随费米能级 spinbox 改变而改变（GAP_ANALYSIS 的已知限制），
+    此前结果字典的 reason 为空，GUI 的 tooltip 无法提示这一点。
+    """
+    energies = np.array([[-1., -1.2, 1., 1.2], [-0.9, -1.1, 0.9, 1.3]])
+    result = BandAnalyzer(band_data(energies, nelect=2, ispin=2)).get_band_gap()
+    assert result['status'] == 'insulator'
+    assert 'display zero' in result['reason']
+
+
 @pytest.mark.parametrize("occupations", [None, [[2, 0], [0, 0]]])
 def test_band_crossing_never_returns_false_positive_gap(occupations):
     data = band_data([[-1, .1], [.2, 1]], occupations)

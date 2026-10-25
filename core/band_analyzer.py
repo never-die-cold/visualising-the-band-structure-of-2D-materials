@@ -78,6 +78,7 @@ class BandAnalyzer:
         capacity = self.state_capacity
         tol = self.occupation_tol
         occupations = self.data.occupations
+        classification_note = ''
         if occupations is not None:
             occupations = np.asarray(occupations, dtype=float)
             if occupations.shape != energy.shape or not np.isfinite(occupations).all():
@@ -112,6 +113,8 @@ class BandAnalyzer:
                 occupied_columns, empty_columns = np.arange(count), np.arange(count, energy.shape[1])
             else:
                 # Total NELECT alone cannot assign spin-up/down populations.
+                classification_note = ('Spin channels classified by position relative to '
+                                       'the display zero; occupations would fix the filling')
                 occupied_columns = np.flatnonzero(np.all(energy <= self.zero_gap_tol, axis=0))
                 empty_columns = np.flatnonzero(np.all(energy >= -self.zero_gap_tol, axis=0))
                 empty_columns = np.setdiff1d(empty_columns, occupied_columns)
@@ -140,11 +143,12 @@ class BandAnalyzer:
                     cb = int(empty_columns[np.argmin(conduction[ci])])
                     direct = True
                     break
+        tail_reason = ('Fermi crossing' if crossing else 'Band overlap' if status == 'metal' else '')
         return dict(base, gap=raw_gap if status == 'insulator' else 0.0,
                     direct=direct, vbm=vbm, cbm=cbm,
                     vbm_k=int(vi), cbm_k=int(ci), vbm_band=vb, cbm_band=cb,
                     raw_gap=raw_gap, status=status,
-                    reason='Fermi crossing' if crossing else 'Band overlap' if status == 'metal' else '')
+                    reason='; '.join(filter(None, (tail_reason, classification_note))))
 
     def fit_effective_mass(self, band_index: int, k_index: int,
                            num_points: int = 5, *, side: Optional[str] = None) -> dict:
