@@ -76,7 +76,7 @@ T15 之后的科研推进（T16/T17 门槛轮次）与本轮复核不在上表�
 | 50 | `ab750a3` | docs(studio): register the SK convention criterion script in the example list |
 | 51 | `620313f` | docs(sk): record the literature check — the Nanoskif manual is the only path |
 
-本轮验收：本机 Windows / Python 3.12 完整套件 **727 项通过**（T15 收束时为 641 项）。复核发现的问题、文件处置与未处理项见 [项目检查计划](PROJECT_REVIEW_PLAN.md) 的「2026-10-17 改进轮次」节。
+本轮验收：本机 Windows / Python 3.12 完整套件最终 **729 项通过**（286.71 s；T15 收束时为 641 项）。复核发现的问题、文件处置与未处理项见 [项目检查计划](PROJECT_REVIEW_PLAN.md) 的「2026-10-17 改进轮次」节。
 
 ### 后续迭代（按单项细粒度拆分）
 
@@ -91,5 +91,6 @@ T15 之后的科研推进（T16/T17 门槛轮次）与本轮复核不在上表�
 | 5 | lint 与 CI 门禁：ruff（E9 + pyflakes）、CI 步骤、测试适配 | `a1aefe0` … `47e9b8e` |
 | 6 | 解析性能：浮点解析与有限性检查热路径、基准重测 | `7f79536` … `d92f9b7` |
 | 收尾 | 共享导出 mixin、默认值单点化、文档与索引 | `1b2775e` … |
+| 7 | 状态与测试基建：Clear Recent 持久化、最近文件单源、VASP/Qt 共享测试助手、取消基类、错误格式统一、pip 缓存、ISPIN=2 说明、画布重建 helper（含一次 revert） | `34bc494` … `19c0341` |
 
-完整列表见 `git log --oneline 6cf5dbe..HEAD`（共 60 条）。
+完整列表见 `git log --oneline 6cf5dbe..HEAD`（共 79 条，含 1 条 revert）。

@@ -243,7 +243,7 @@ T11 随每次缺陷修复推进，不等所有实现完成后才补测试。保�
 
 SK 文献核查（2026-10-17，随本轮交付）：唯一可能给出装配约定的是**未公开的 Nanoskif 用户参考手册**（NanoAcademic 开发、鸿之微代理，须向其索取）——此前列为候选的 Zahid 博士论文、NEMO-3D 文档、《Handbook》已逐一排除（论文无补充材料且不提装配细节；Nanoskif 从未公开发布；NEMO-3D/QTCAD 文档均为正交 sp³d⁵s* 的标准 SK54 约定；《Handbook》与 Boykin–Klimeck 被付费墙阻断）。核查同时**更正了项目内一处无来源推断**：原记"线索指向 η_ij 型轨道框架旋转"，实际 η 在相关文档中是 Harrison 键长标度指数，且 Nanoskif 自述"限于 SK 传统的双中心近似"，不支持旋转框架假设；最可能的错配位置改为逐壳层的方向余弦/参数分配（依据：S–Mo 块的 8 个独立积分无法在一次标准 SK54 装配中全部消费），并标注为推断。详见 [参考文献](REFERENCES.md)。
 
-验收：本机 Windows / Python 3.12 完整套件 **727 项通过**（T15 收束时为 641 项；本轮新增 46 项回归）。
+验收：本机 Windows / Python 3.12 完整套件最终 **729 项通过**（T15 收束时为 641 项；本轮新增 48 项回归）。
 
 ### 后续迭代（同一轮的细粒度拆分）
 
@@ -255,5 +255,7 @@ SK 文献核查（2026-10-17，随本轮交付）：唯一可能给出装配约�
 4. **去重与常量统一**：新增 `vdw_studio/constants.py` 并替换 6 处各自定义的物理常数（`models.py` 的舍入值一并统一）；`KPath.sample_fractional` 统一三处路径采样；TMD 参考带隙从 `TMD_KP_PARAMS` 派生；POSCAR/XYZ 改用原子写；CLI 单材料失败返回可读错误与退出码（`run-all` 改用返回码记账）；示例目录增加源码树回退。
 5. **lint 与 CI**：配置 ruff 只启用 E9 + pyflakes 并加入 CI（`ruff` 进 test extra）；清理 47 处未使用导入/变量与 1 处 `F821`（`ExcitonResult` 注解）。
 6. **解析性能**：`_float` 只在失败时处理 Fortran D 指数、逐行有限性检查改用 `math.isfinite`；4096×64 解析从 0.52 s 降至 0.21 s（tracemalloc 下 7.50 → 6.46 s），基准与说明已更新。
+7. **状态与测试基建**：BandViz 的 Clear Recent 现在同步清空持久化列表（此前重启后"复活"），最近文件以 config 为权威源（去重/截断只在一处发生）；测试侧抽出 `tests/vasp_fixtures.py` 与 `tests/qt_helpers.py`，消除 `test_*` 文件间的互相导入；BandViz 两个 worker 的协作取消三件套抽成 `CancelableWorker`；vdW Studio 两个 worker 的错误格式统一为 `format_error`；ISPIN=2 无占据时 reason 说明分类依据（tooltip 可见）；CI 启用 pip 缓存；快照校验先于模型深拷贝。
+   **一次回退（记录在案）**：把 moiré 结果页也换上 `_fresh_axis` 后，TestMoireTab 在 Windows/offscreen 下稳定段错误（退出码 127、输出缓冲全丢）；用前一提交二分复测 3 次（旧 3/3 通过、新 3/3 崩溃）确认由该 3 行改动触发，具体原生成因未定位——已 revert（`19c0341`），其余 5 处画布使用 `_fresh_axis` 有全量 GUI 测试覆盖、保持不变。
 
 未做的候选及原因：`BandData.reciprocal_matrix` 缓存——实测只有一处调用点，且测试会在构造后改写 `lattice_matrix`，缓存收益不足而失效风险真实；SK 引擎两份 `sk_element` 实现的合并——行为已分叉（反向查表的 shell 顺序回退），需与 T16 的约定对账一起做，单独合并会掩盖物理差异。
