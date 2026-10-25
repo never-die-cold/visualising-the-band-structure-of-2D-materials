@@ -167,11 +167,18 @@ class TwistedTMDBilayer:
         return out
 
     def moire_effective_mass(self, band_index: int = 0, dk: float = 1e-4) -> float:
-        """k=0 处第 ``band_index`` 条 moiré 带的有效质量 (m₀，二阶差分)。"""
+        """k=0 处第 ``band_index`` 条 moiré 带的有效质量 (m₀，二阶差分)。
+
+        d²E/dk² = 2·(ħ²/2m₀)/m*，故 m* = 2·HBAR2_OVER_2M0/curvature
+        （与 ``analysis.properties.effective_mass`` 的约定一致）。
+
+        注意 ``band="vb"`` 的谱升序排列且能量 ≤ 0：价带**顶**在
+        ``band_index=-1``（最高带），不是 0。
+        """
         if dk <= 0:
             raise ValueError("dk 必须为正")
         e = self.bands([[0.0, 0.0], [dk, 0.0], [-dk, 0.0]])
         curvature = (e[1, band_index] - 2 * e[0, band_index] + e[2, band_index]) / dk ** 2
         if abs(curvature) < 1e-15:
             raise ValueError("带曲率为零，无法定义有效质量")
-        return abs(HBAR2_OVER_2M0 / curvature)
+        return abs(2 * HBAR2_OVER_2M0 / curvature)

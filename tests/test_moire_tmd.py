@@ -51,6 +51,17 @@ class TestDecoupledLimit:
         e = np.linalg.eigvalsh(H)
         np.testing.assert_allclose(np.sort(e), np.sort(np.diag(H).real), atol=1e-12)
 
+    def test_effective_mass_recovers_input_in_decoupled_limit(self):
+        """T=0 时 Γ 点最低带 = 输入质量的纯抛物线：二阶差分质量必须精确还原。
+
+        这是二阶差分质量因子 2 的精确锚点（m* = 2·(ħ²/2m₀)/d²E，
+        与 analysis.properties._curvature_mass 同约定）：漏 2 会得 0.275。
+        """
+        m_in = 0.55
+        model = TwistedTMDBilayer(theta_deg=2.0, t_interlayer=0.0, n_shells=2,
+                                  effective_mass=m_in)
+        assert model.moire_effective_mass(band_index=0) == pytest.approx(m_in, rel=1e-9)
+
     def test_t_zero_spectra_shift_with_k(self):
         """T=0：最低带 = 两层动量并集的最小值（动量守恒的自检）。"""
         model = TwistedTMDBilayer(theta_deg=3.0, t_interlayer=0.0, n_shells=3,
