@@ -17,6 +17,7 @@ from vdw_studio.analysis.properties import analyze_gap
 from vdw_studio.analysis.berry import valley_report
 from vdw_studio.engine.models import HoneycombModel
 from test_task_state import wait_until
+from vasp_fixtures import write_eigenval
 
 
 @pytest.fixture(scope='module')
@@ -38,7 +39,6 @@ def cancel_after(count):
 
 
 def test_numerical_work_cancels_inside_sampling_optimization_and_broadening(tmp_path):
-    from test_bandviz_mass import write_eigenval
     points = [[i / 100, 0, 0] for i in range(80)]
     file = write_eigenval(tmp_path, points)
     check, state = cancel_after(4)
@@ -119,7 +119,6 @@ def root_window(tmp_path, monkeypatch):
 
 
 def test_bandviz_close_defers_destruction_until_import_thread_exits(app, tmp_path, monkeypatch):
-    from test_bandviz_mass import write_eigenval
     file = write_eigenval(tmp_path, [[0, 0, 0], [.25, 0, 0]])
     gate, started = Event(), Event()
     run = ParseWorker.run
@@ -151,7 +150,6 @@ def test_bandviz_close_defers_destruction_until_import_thread_exits(app, tmp_pat
 
 
 def test_continuous_imports_do_not_overwrite_latest_file(app, tmp_path, monkeypatch):
-    from test_bandviz_mass import write_eigenval
     first_dir, second_dir = tmp_path / 'first', tmp_path / 'second'
     first_dir.mkdir()
     second_dir.mkdir()
@@ -184,7 +182,6 @@ def test_continuous_imports_do_not_overwrite_latest_file(app, tmp_path, monkeypa
 
 
 def test_dos_refresh_debounces_runs_off_main_thread_and_rejects_stale_result(app, tmp_path, monkeypatch):
-    from test_bandviz_mass import write_eigenval
     import gui.workers.dos_worker as module
     original = module.load_spectrum
     file = write_eigenval(tmp_path, [[0, 0, 0], [.25, 0, 0]])
@@ -242,7 +239,6 @@ def test_background_failure_restores_vdw_controls(app, monkeypatch):
 
 
 def test_bandviz_bad_import_restores_controls_without_changing_loaded_file(app, tmp_path, monkeypatch):
-    from test_bandviz_mass import write_eigenval
     valid = write_eigenval(tmp_path, [[0, 0, 0], [.25, 0, 0]])
     invalid = tmp_path / 'bad-EIGENVAL'
     invalid.write_text('truncated input\n')
@@ -326,7 +322,6 @@ def test_bandviz_dos_error_is_surfaced_once(app, tmp_path, monkeypatch):
 
 def test_bandviz_database_failure_is_reported_in_status_bar(app, tmp_path, monkeypatch):
     """历史入库失败必须在状态栏可见（此前只写日志、用户看到 'Done'）。"""
-    from test_bandviz_mass import write_eigenval
 
     file = write_eigenval(tmp_path, [[0, 0, 0], [.25, 0, 0]])
     win = root_window(tmp_path, monkeypatch)

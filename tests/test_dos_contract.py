@@ -5,6 +5,7 @@ import pytest
 
 from core.dos_analyzer import DosAnalyzer, DoscarParser, load_spectrum
 from core.parser import BandData, VASPEigenvalParser
+from vasp_fixtures import write_eigenval
 from vdw_studio.engine.solver import solve_dos
 
 
@@ -92,7 +93,6 @@ def test_smearing_occupations_outside_capacity_do_not_block_total_spectrum():
 
 
 def test_automatic_mesh_is_the_only_inferred_eigenvalue_bz_dos(tmp_path):
-    from test_bandviz_mass import write_eigenval
     file = write_eigenval(tmp_path, [[0, 0, 0], [.25, 0, 0]])
     (tmp_path / 'KPOINTS').write_text('Grid\n0\nGamma\n4 4 1\n0 0 0\n')
     parsed = VASPEigenvalParser(str(file)).parse()

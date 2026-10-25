@@ -19,6 +19,7 @@ from gui.band_widget import BandStructureWidget
 from gui.control_panel import ControlPanel
 from gui.dos_widget import DosWidget
 from gui.workers.parse_worker import ParseWorker
+from vasp_fixtures import RAW, write_eigenval, write_poscar
 
 
 @pytest.fixture(scope="module")
@@ -28,7 +29,6 @@ def app():
 
 @pytest.mark.parametrize('doscar', [False, True])
 def test_worker_prefers_doscar_and_distinguishes_sampled_spectrum(app, tmp_path, doscar):
-    from test_bandviz_mass import write_eigenval
     from test_dos_contract import write_doscar
     file = write_eigenval(tmp_path, [[0, 0, 0], [.25, 0, 0]])
     if doscar:
@@ -66,7 +66,6 @@ def test_worker_prefers_doscar_and_distinguishes_sampled_spectrum(app, tmp_path,
 
 @pytest.mark.parametrize("calibrated", [True, False])
 def test_physical_lattice_worker_and_visible_mass_diagnostics(app, tmp_path, calibrated):
-    from test_bandviz_mass import write_poscar, write_eigenval, RAW
     x = np.linspace(-.12, .12, 13)
     cart = np.column_stack((x, x * 0, x * 0))
     frac = cart @ RAW.T / (2 * np.pi)
