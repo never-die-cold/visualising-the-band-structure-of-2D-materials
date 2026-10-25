@@ -1,13 +1,14 @@
 """Cancelable spectrum refresh; holds captured input and display parameters."""
-from threading import Event
 import traceback
 from PyQt5.QtCore import QThread, pyqtSignal
 from core.dos_analyzer import load_spectrum
+from .cancellation import CancelableWorker
 
 
-class DosWorker(QThread):
+class DosWorker(CancelableWorker, QThread):
     completed = pyqtSignal(object)
     error = pyqtSignal(str)
+    cancel_message = 'Spectrum refresh cancelled'
 
     def __init__(self, data, path, request_id, *, fermi_level, energy_range,
                  sigma, state_capacity, parent=None):
@@ -15,15 +16,7 @@ class DosWorker(QThread):
         self.data, self.path, self.request_id = data, path, request_id
         self.parameters = dict(fermi_level=fermi_level, energy_range=tuple(energy_range),
                                sigma=sigma, state_capacity=state_capacity)
-        self._cancel_requested = Event()
-
-    def cancel(self):
-        self._cancel_requested.set()
-        self.requestInterruption()
-
-    def check_interruption(self):
-        if self._cancel_requested.is_set() or self.isInterruptionRequested():
-            raise InterruptedError('Spectrum refresh cancelled')
+        self.init_cancellation()
 
     def run(self):
         try:

@@ -4,16 +4,16 @@ Uses PyQt5 QThread to keep the GUI responsive.
 """
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from threading import Event
 from uuid import uuid4
 import traceback
 
 from core.parser import VASPEigenvalParser
 from core.band_analyzer import BandAnalyzer
 from core.dos_analyzer import load_spectrum
+from .cancellation import CancelableWorker
 
 
-class ParseWorker(QThread):
+class ParseWorker(CancelableWorker, QThread):
     """
     后台解析线程：解析 EIGENVAL + KPOINTS，计算 DOS。
     信号:
@@ -29,6 +29,7 @@ class ParseWorker(QThread):
     loaded = pyqtSignal(object, object, object)
     error = pyqtSignal(str)
     cancelled = pyqtSignal()
+    cancel_message = 'Import cancelled'
 
     def __init__(self, eigenval_path: str, kpoints_path: str = None,
                  efermi: float = 0.0, emin: float = -5.0, emax: float = 5.0,
@@ -41,15 +42,7 @@ class ParseWorker(QThread):
         self.emax = emax
         self.dos_sigma = dos_sigma
         self.task_id = str(uuid4())
-        self._cancel_requested = Event()
-
-    def cancel(self):
-        self._cancel_requested.set()
-        self.requestInterruption()
-
-    def check_interruption(self):
-        if self._cancel_requested.is_set() or self.isInterruptionRequested():
-            raise InterruptedError('Import cancelled')
+        self.init_cancellation()
 
     def run(self):
         try:
