@@ -2,7 +2,9 @@
 
 运行::
 
-    python examples/run_screening.py [--db screening.db]
+    python examples/run_screening.py [--db results/screening.db]
+
+默认写入 ``results/screening.db``（该目录已被 .gitignore 忽略）。
 
 演示 ROADMAP Phase 6 的高通量工作流：
 
