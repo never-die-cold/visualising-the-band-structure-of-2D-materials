@@ -15,7 +15,7 @@ vdw-studio
 vdw-studio-cli list
 ```
 
-开发测试：`python -m pip install ".[test]"` 后 `python -m pytest tests -q`。源码入口 `python main.py`、`python -m vdw_studio.gui`、`python -m vdw_studio.cli` 同样可用。requirements.txt 保留相同的四个运行依赖版本，pyproject.toml 是安装与 CI 的统一声明。
+开发测试：`python -m pip install ".[test]"` 后 `python -m pytest tests -q`；`[test]` 同时含 ruff，提交前可运行 `python -m ruff check .`（CI 同一门槛，规则为 E9 + pyflakes）。源码入口 `python main.py`、`python -m vdw_studio.gui`、`python -m vdw_studio.cli` 同样可用。requirements.txt 保留相同的四个运行依赖版本，pyproject.toml 是安装与 CI 的统一声明。
 
 CI 矩阵为 Windows/Linux × Python 3.12/3.13。按包声明安装并检查依赖；从安装位置启动 CLI；`-I` 隔离模式检查三个命令入口加载，以及实际 BandViz 导入和 vdW Studio 默认 MoS₂ 后台任务。完整测试还覆盖真实 run-all 出图/入库/失败继续；独立解析和物理基准不依赖在线数据。
 
