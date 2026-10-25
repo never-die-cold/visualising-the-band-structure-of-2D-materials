@@ -97,6 +97,19 @@
    orbital_weights/orbital_fraction/band_character，含畸形文件容错）；
    bandstructure 输入直接对接 BandViz ⬜ 未做
 4. **结果数据库**：SQLite 记录每次仿真（沿用 Pi 版的 storage 模块设计）
+5. **DFT 桥接（2026-10-17 起两条腿）**：
+   - ✅ **Wannier90 互操作**：`io/wannier.py` 读写 `_hr.dat` +
+     `engine/wannier_model.py` 周期插值模型（正交基、普通本征值问题），
+     接入 solver/带隙/DOS 全链；验证锚点为合成往返（石墨烯 TB 导出
+     hr 读回能带逐位一致，Dirac 零隙复现）；真实 Wannier90 示例对账
+     待数据到位后补
+   - ✅ **DFT→TB 自拟合管线（拟合侧）**：`fitting/` 模块——SK 模型
+     参数化（七张积分表 ↔ 命名参数向量）+（原子,壳层）投影权重
+     （S-正交投影公式 c†S_A⁻¹c）+ 能带/字符残差 + 数值雅可比最小二乘；
+     合成数据往返已验证（扰动 5 参数 → 恢复 5e-3、带隙 1e-4）。
+     ⬜ 真实 DFT 数据（EIGENVAL/PROCAR）接入与 T16-SK 的对账
+   - 顺带更正：投影权重此前漏掉子空间重叠矩阵的逆，sk_convention_scan
+     的 m=±2 权重与文档 0.74 数字均出自错误公式（已标注待复核）
 
 ## 技术债与已知问题
 
