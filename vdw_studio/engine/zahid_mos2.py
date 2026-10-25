@@ -105,6 +105,15 @@ INTEGRALS_MOMO_S = {
     "ddσ": -0.0216, "ddπ": -0.0285, "ddδ": 0.0432,
 }
 
+# 装配表名 → 模块常量。模型实例持有这些表的私有副本（见 __init__ 的
+# integrals 覆盖），``vdw_studio.fitting`` 通过表名+通道名参数化模型。
+DEFAULT_TABLES = {
+    "ONSITE": ONSITE,
+    "SMo_H": INTEGRALS_SMO_H, "SMo_S": INTEGRALS_SMO_S,
+    "SS_H": INTEGRALS_SS_H, "SS_S": INTEGRALS_SS_S,
+    "MoMo_H": INTEGRALS_MOMO_H, "MoMo_S": INTEGRALS_MOMO_S,
+}
+
 ORBITALS = ("s", "px", "py", "pz", "dxy", "dyz", "dzx", "dx2-y2", "dz2")
 SHELL = dict(ORBITAL_SHELL)
 _SHELL_ORBS = {1: ["px", "py", "pz"], 2: ["dxy", "dyz", "dzx", "dx2-y2", "dz2"]}
@@ -259,12 +268,16 @@ class ZahidMoS2Model:
 
     def __init__(self, a: float = 3.179, dxx: float = 3.135,
                  soc: bool = True, *, mirror_images=None,
-                 conjugate_fill: bool = True) -> None:
+                 conjugate_fill: bool = True, integrals=None) -> None:
         """``mirror_images`` / ``conjugate_fill`` 只影响同亚层 S–S、Mo–Mo
         近邻的装配方式，用于复现 2026-10-14 的装配约定复核（见模块文档与
         ``docs/REFERENCES.md``）。S–Mo 的六个近邻本就是显式列出的真实键，
         其共轭块 ⟨Mo|H|S⟩ = ⟨S|H|Mo⟩† 是厄米性的定义要求而非约定选择，
         故不受这两个开关影响。
+
+        ``integrals``：按表名覆盖积分参数（如 ``{"SMo_H": {...}}``），
+        用于 DFT→TB 拟合（``vdw_studio.fitting``）。传入的表会被**复制**，
+        模型实例持有私有副本，拟合循环可以就地改值而不污染模块常量。
         """
         self.lattice = Lattice.hexagonal(a, vacuum=self.VACUUM)
         self.a = a
@@ -274,6 +287,16 @@ class ZahidMoS2Model:
                               else tuple((int(dx), int(dy)) for dx, dy in mirror_images))
         self.conjugate_fill = bool(conjugate_fill)
         self.name = "MoS2 sp3d5 (Zahid 2013)"
+        self.tables = {name: dict(table) for name, table in DEFAULT_TABLES.items()}
+        if integrals:
+            unknown = set(integrals) - set(self.tables)
+            if unknown:
+                raise ValueError(f"未知积分表 {sorted(unknown)}，可选: {sorted(self.tables)}")
+            for name, table in integrals.items():
+                extra = set(table) - set(self.tables[name])
+                if extra:
+                    raise ValueError(f"表 {name} 含未知通道 {sorted(extra)}")
+                self.tables[name] = dict(table)
         h = dxx / 2
         # 三棱柱配位：两个 S 同一面内空位 (1/3, 2/3)（上下对齐）
         self.sites = [("Mo", np.array([0.0, 0.0, 0.5])),
@@ -347,23 +370,25 @@ class ZahidMoS2Model:
                         H[bj[0]:bj[1], bi[0]:bi[1]] += np.conj(v) * np.eye(2)
                         S[bj[0]:bj[1], bi[0]:bi[1]] += np.conj(s_) * np.eye(2)
 
+        tables = self.tables
         for (i, j, dfrac, kind) in self.bonds:
             if kind == "SMo":
                 # ⟨S|H|Mo⟩ 块 + 厄米共轭块 ⟨Mo|H|S⟩（厄米性的定义要求）
-                add_pair(i, j, dfrac, INTEGRALS_SMO_H, INTEGRALS_SMO_S,
+                add_pair(i, j, dfrac, tables["SMo_H"], tables["SMo_S"],
                          1.0, symmetric=True)
             elif kind == "SS":
-                add_pair(i, j, dfrac, INTEGRALS_SS_H, INTEGRALS_SS_S,
+                add_pair(i, j, dfrac, tables["SS_H"], tables["SS_S"],
                          1.0, symmetric=self.conjugate_fill)
             else:
-                add_pair(i, j, dfrac, INTEGRALS_MOMO_H, INTEGRALS_MOMO_S,
+                add_pair(i, j, dfrac, tables["MoMo_H"], tables["MoMo_S"],
                          1.0, symmetric=self.conjugate_fill)
 
         # on-site 能量
+        onsite = tables["ONSITE"]
         for atom, (sp, _) in enumerate(self.sites):
             off = atom * 18
             for oi, o in enumerate(ORBITALS):
-                e = ONSITE[sp][_ONSITE_KEY[o]]
+                e = onsite[sp][_ONSITE_KEY[o]]
                 H[off + oi * 2: off + oi * 2 + 2,
                   off + oi * 2: off + oi * 2 + 2] += e * np.eye(2)
         # on-site 重叠（正交归一：S_ii = 1）
@@ -372,7 +397,7 @@ class ZahidMoS2Model:
         if self.soc:
             for atom, (sp, _) in enumerate(self.sites):
                 off = atom * 18
-                H[off:off + 18, off:off + 18] += onsite_soc(ONSITE[sp]["lambda"])
+                H[off:off + 18, off:off + 18] += onsite_soc(onsite[sp]["lambda"])
         return H, S
 
     # ------------------------------------------------------------------
