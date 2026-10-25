@@ -250,12 +250,18 @@ class MainWindow(QMainWindow):
 
     def _clear_result_plots(self):
         for canvas in (self.band_canvas, self.dos_canvas, self.bz_canvas, self.valley_canvas):
-            canvas.fig.clf()
-            canvas.ax = canvas.fig.add_subplot(111)
-            canvas.ax.text(.5, .5, plot_text('参数已更新，请运行仿真', 'Parameters changed; run simulation'),
-                           ha='center', va='center', transform=canvas.ax.transAxes)
-            canvas.ax.set_axis_off()
+            ax = self._fresh_axis(canvas)
+            ax.text(.5, .5, plot_text('参数已更新，请运行仿真', 'Parameters changed; run simulation'),
+                    ha='center', va='center', transform=ax.transAxes)
+            ax.set_axis_off()
             canvas.draw_idle()
+
+    @staticmethod
+    def _fresh_axis(canvas):
+        """清空画布并返回新的主坐标轴（各绘图页共用的重建步骤）。"""
+        canvas.fig.clf()
+        canvas.ax = canvas.fig.add_subplot(111)
+        return canvas.ax
 
     def _set_busy(self, busy: bool) -> None:
         """运行期间保持材料与参数一致，按模型能力恢复控件。"""
@@ -271,8 +277,7 @@ class MainWindow(QMainWindow):
             widget.setEnabled(not busy and self.preset.engine != "kp")
 
     def _show_dos_unavailable(self, reason: str) -> None:
-        self.dos_canvas.fig.clf()
-        ax = self.dos_canvas.fig.add_subplot(111)
+        ax = self._fresh_axis(self.dos_canvas)
         ax.text(0.5, 0.5, plot_text(reason, 'BZ DOS unavailable for the local valley model'), ha="center", va="center",
                 wrap=True, transform=ax.transAxes)
         ax.set_axis_off()
@@ -483,8 +488,7 @@ class MainWindow(QMainWindow):
         gap = results["gap"]
 
         # 能带页
-        self.band_canvas.fig.clf()
-        ax = self.band_canvas.fig.add_subplot(111)
+        ax = self._fresh_axis(self.band_canvas)
         title = (f"{band.model_name} — K 谷附近 (|q| ≤ {results['qmax']} Å$^{{-1}}$)"
                  if results["domain"] == "valley-local" else None)
         plot_band_structure(band, ax=ax, title=title)
@@ -494,14 +498,12 @@ class MainWindow(QMainWindow):
         if dos is None:
             self._show_dos_unavailable(results["dos_reason"])
         else:
-            self.dos_canvas.fig.clf()
-            ax = self.dos_canvas.fig.add_subplot(111)
+            ax = self._fresh_axis(self.dos_canvas)
             plot_dos(dos, ax=ax)
             self.dos_canvas.draw_idle()
 
         # 布里渊区页
-        self.bz_canvas.fig.clf()
-        ax = self.bz_canvas.fig.add_subplot(111)
+        ax = self._fresh_axis(self.bz_canvas)
         plot_bz_path(results["lattice"], results["kpath"], ax=ax)
         self.bz_canvas.draw_idle()
 
