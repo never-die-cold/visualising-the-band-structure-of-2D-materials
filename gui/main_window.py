@@ -59,6 +59,7 @@ class MainWindow(QMainWindow):
         # 左侧：文件树
         self.file_tree = FileTreeWidget()
         self.file_tree.file_selected.connect(self._on_file_tree_selected)
+        self.file_tree.recent_cleared.connect(self._on_recent_cleared)
         main_layout.addWidget(self.file_tree, stretch=1)
 
         # 中间：图表 Tab
@@ -202,6 +203,10 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     def _on_file_tree_selected(self, filepath: str):
         self._load_eigenval(filepath)
+
+    def _on_recent_cleared(self):
+        """Clear Recent 按钮同时清空持久化列表（此前重启后列表会"复活"）。"""
+        self._persist_config(self.config.set, 'recent_files', [])
 
     def load_file(self):
         start_dir = self.config.get('last_open_dir', '.')

@@ -340,3 +340,17 @@ def test_bandviz_database_failure_is_reported_in_status_bar(app, tmp_path, monke
         assert 'history not saved' in win.statusBar().currentMessage()
     finally:
         win.close()
+
+
+def test_bandviz_clear_recent_also_persists(app, tmp_path, monkeypatch):
+    """Clear Recent 必须同时清空持久化列表（此前重启后列表会"复活"）。"""
+    win = root_window(tmp_path, monkeypatch)
+    win.config.set('recent_files', [str(tmp_path / 'a.EIGENVAL')])
+    win.file_tree.set_recent_files(win.config.get_recent_files())
+    try:
+        win.file_tree.btn_clear_recent.click()
+        app.processEvents()
+        assert win.config.get_recent_files() == []
+        assert win.file_tree._recent_files == []
+    finally:
+        win.close()

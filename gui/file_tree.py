@@ -15,6 +15,8 @@ class FileTreeWidget(QWidget):
 
     # 信号：用户请求加载指定路径的 EIGENVAL 文件
     file_selected = pyqtSignal(str)
+    # 信号：用户点击 Clear Recent——持久化列表由主窗口负责清理
+    recent_cleared = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -69,9 +71,10 @@ class FileTreeWidget(QWidget):
         self._refresh_recent_tree()
 
     def clear_recent(self):
-        """清空最近文件列表"""
+        """清空最近文件列表；持久化由 recent_cleared 信号驱动"""
         self._recent_files.clear()
         self._refresh_recent_tree()
+        self.recent_cleared.emit()
 
     def set_recent_files(self, files: list):
         """批量设置最近文件列表"""
