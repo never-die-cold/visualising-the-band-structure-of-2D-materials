@@ -148,7 +148,7 @@ def test_future_database_schema_is_refused_without_downgrading(tmp_path, factory
 def test_gui_settings_write_failure_keeps_event_loop_and_close_functional(tmp_path, monkeypatch):
     from PyQt5.QtWidgets import QApplication
     from PyQt5.QtTest import QTest
-    from test_lifecycle import root_window
+    from qt_helpers import root_window
     from gui.main_window import CONFIG_FLUSH_DEBOUNCE_MS
     from utils import atomic_io
     app = QApplication.instance() or QApplication([])
@@ -172,7 +172,7 @@ def test_gui_settings_changes_are_coalesced(tmp_path, monkeypatch):
     """连续参数变化合并为一次落盘（此前每步 spinbox 都原子写 + fsync）。"""
     from PyQt5.QtWidgets import QApplication
     from PyQt5.QtTest import QTest
-    from test_lifecycle import root_window
+    from qt_helpers import root_window
     from gui.main_window import CONFIG_FLUSH_DEBOUNCE_MS
     app = QApplication.instance() or QApplication([])
     window = root_window(tmp_path, monkeypatch)
