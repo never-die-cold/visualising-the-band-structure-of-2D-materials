@@ -19,7 +19,15 @@ Eq. (24)-(29)，自旋块对角）::
     H_D  = [[ε_vb,  τ·γ·q₋^τ], [τ·γ·q₊^τ, ε_cb]],   q_±^τ = τq_x ± iq_y
     H_as = diag(α_s q², β_s q²)
     H_3w = [[0, κ_s (q₊^τ)²], [κ_s (q₋^τ)², 0]]
-    H_cub= [[0, η_s (q₊^τ)³], [η_s (q₋^τ)³, 0]]
+    H_cub= −(η_s/2)·q²·[[0, q₋^τ], [q₊^τ, 0]]   （原文 Eq. (4e)；C₃ 协变）
+
+    2026-10-30 更正：H_cub 此前误转录为 η_s(q₊^τ)³——该角谐波（m=+3）
+    与 H_D/H_3w（m=−1/+2≡−1 mod 3）不同，破坏 C₃ 对称性。质量与自旋
+    劈裂锚点对立方项不敏感（本征值贡献在 O(q⁴)），故当时未察觉；
+    由单层谱的 C₃ 不变性测试抓出（原文非对角立方项与 H_D 共享
+    q₋^τ 结构，见 arXiv:1410.6666v3 Eq. (4e)，papers/arxiv/kormanyos2015/）。
+    对角立方项 H_cub,2（Eq. 4f，|q|³cos3φ）的参数未在 Tables 8/9
+    列出（正文明确"not shown"），本实现按文献同样省略。
 
 基矢 {|vb,s⟩, |cb,s⟩}，全矩阵 4×4（自旋块对角）。
 能带参考：ε_vb = −E_bg/2, ε_cb = +E_bg/2（带隙中心为零）。
@@ -188,7 +196,12 @@ class TMDKpModel:
             # （自旋旋量反幺正映射的相对符号所致，保证 |H_D·H_3w|
             #   交叉项在两谷满足时间反演）
             kappa = tau * (p.kappa_up if ts > 0 else p.kappa_down)
-            eta = tau * (p.eta_up if ts > 0 else p.eta_down)
+            # η 不带 τ 因子（与 κ 相反）：Eq. (4e) 的固定谐波 q²q₋^τ 与 H_D
+            # 同构，TR 映射要求 η_{−τ,−s} = η*_{τ,s}（偶），而 κ 的
+            # (q₊^τ)² 谐波要求 κ_{−τ,−s} = −κ*_{τ,s}（奇，故有 τ 因子）。
+            # 两者不能共用同一谷结构——旧实现对两者都用 τ 因子，与
+            # η·(q₊)³ 谐波组合虽然 TR 自洽，却破坏 C₃（见 H_cub 修正注）。
+            eta = p.eta_up if ts > 0 else p.eta_down
             # 对角项。注意：原文 Eq.(24) 的 H_0 印作 (𝟙₂⊗s_z)，但以其
             # Table 3/4 的有效质量反证必须为自旋无关的 +ħ²q²/2m₀
             # （若取 s_z 形式，↓ 自旋电子质量 ~3 m₀，与文献 0.43 矛盾），
@@ -198,8 +211,13 @@ class TMDKpModel:
             H[row + 1, row + 1] = eps_cb + tau * p.delta_cb * s \
                 + HBAR2_OVER_2M0 * q2 + beta * q2
             # 非对角: H_D + H_3w + H_cub
+            # H_cub 按原文 Eq. (4e)：−(η/2)·q²·q₋^τ（与 H_D 同角谐波，C₃ 协变）。
+            # 2026-10-30 修正：此前转录为 η·(q₊^τ)³（谐波 m=+3），破坏 C₃——
+            # 质量/劈裂锚点对立方项不敏感（其本征值贡献在 O(q⁴)），由单层
+            # k·p 谱的 C₃ 不变性测试抓出。
             off = p.gamma * (qx - 1j * tau * qy) \
-                + kappa * qp**2 + eta * qp**3
+                + kappa * qp**2 \
+                - (eta / 2.0) * q2 * (qx - 1j * tau * qy)
             H[row, row + 1] = off
             H[row + 1, row] = np.conj(off)
         return H

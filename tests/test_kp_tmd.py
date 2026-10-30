@@ -159,3 +159,24 @@ class TestEffectiveMassInput:
         m = TMDKpModel(TMDKpParams.from_library("MoS2", "dft"))
         with pytest.raises(ValueError):
             m.effective_mass("cb", +1, +1, direction=direction)
+
+
+class TestC3Symmetry:
+    def test_spectrum_invariant_under_120deg(self):
+        """单层 k·p 谱对 120° 旋转严格不变（两谷分别验证）。
+
+        H_cub 转录错误的回归锚点（2026-10-30）：Eq. (4e) 的
+        −(η/2)q²q₋^τ 曾被转录为 η(q₊^τ)³——谐波 m=+3 与 H_D/H_3w
+        （m≡−1 mod 3）不同，C₃ 破缺 ~2e-6 eV @ |q|≈0.02。质量与自旋
+        劈裂锚点对立方项不敏感（本征值贡献在 O(q⁴)），只有 C₃ 能抓住。
+        """
+        c, s = np.cos(2 * np.pi / 3), np.sin(2 * np.pi / 3)
+        rot = np.array([[c, -s], [s, c]])
+        for name in ("MoS2", "WS2"):
+            m = TMDKpModel(TMDKpParams.from_library(name, "dft"))
+            for q in ([0.02, 0.011], [0.05, -0.03], [0.1, 0.02]):
+                q = np.array(q)
+                for valley in (+1, -1):
+                    err = np.abs(m.energies(q, valley)
+                                 - m.energies(rot @ q, valley)).max()
+                    assert err < 1e-12
