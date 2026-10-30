@@ -40,7 +40,6 @@ from vdw_studio.engine.kpath import KPath
 from vdw_studio.engine.models import BilayerGrapheneModel
 from vdw_studio.engine.multilayer import HoneycombMultilayerModel
 from vdw_studio.engine.multilayer import MoS2MultilayerModel
-from vdw_studio.engine.zahid_mos2 import ZahidMoS2Model
 from vdw_studio.structure.builders import graphene, tmd
 from vdw_studio.structure.multilayer import (
     stack_2h,
