@@ -1,4 +1,4 @@
-"""仿真引擎子包：k 路径、紧束缚模型、k·p 模型、moiré 连续模型、能带 / DOS 求解。"""
+"""仿真引擎子包：k 路径、紧束缚模型、k·p 模型、moiré 连续模型、多层堆叠、能带 / DOS 求解。"""
 
 from .kpath import KPath, high_symmetry_points
 from .models import (
@@ -12,6 +12,13 @@ from .solver import BandStructure, DOSResult, solve_bands, solve_dos
 from .kp_tmd import TMD_KP_PARAMS, TMDKpModel, TMDKpParams
 from .zahid_mos2 import ZahidMoS2Model
 from .moire import TwistedBilayerGraphene
+from .multilayer import (
+    HARRISON_EXPONENT,
+    HoneycombMultilayerModel,
+    MoS2MultilayerModel,
+    harrison_scale,
+    scaled_integrals,
+)
 
 __all__ = [
     "KPath", "high_symmetry_points",
@@ -20,4 +27,6 @@ __all__ = [
     "BandStructure", "DOSResult", "solve_bands", "solve_dos",
     "TMDKpModel", "TMDKpParams", "TMD_KP_PARAMS",
     "ZahidMoS2Model", "TwistedBilayerGraphene",
+    "HARRISON_EXPONENT", "HoneycombMultilayerModel", "MoS2MultilayerModel",
+    "harrison_scale", "scaled_integrals",
 ]

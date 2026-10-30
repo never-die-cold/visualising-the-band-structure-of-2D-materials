@@ -68,7 +68,9 @@ class MultilayerStack:
 
     :attr:`layer_slices` 给出每层在 :attr:`crystal` 中的原子索引区间
     ``[start, stop)``（层内原子顺序与单层一致）——层间耦合生成器据此
-    区分层内/层间原子对。
+    区分层内/层间原子对。:attr:`steps` 记录每层的 :class:`LayerStep`
+    （扭转堆叠为 ``None``：其层旋转不是 0°/180°，无法用 LayerStep 表达），
+    引擎侧装配层内镜像键的局部规范时需要知道每层是否翻转。
     """
 
     monolayer: Crystal
@@ -77,6 +79,7 @@ class MultilayerStack:
     layer_slices: Tuple[Tuple[int, int], ...]
     stacking: str
     meta: dict = field(default_factory=dict)
+    steps: Optional[Tuple[LayerStep, ...]] = None
 
     @property
     def n_layers(self) -> int:
@@ -150,7 +153,7 @@ def _stack_with_steps(monolayer: Crystal, steps: Sequence[LayerStep],
     return MultilayerStack(monolayer=monolayer, crystal=out,
                            interlayer=float(interlayer),
                            layer_slices=tuple(slices), stacking=stacking,
-                           meta=dict(meta))
+                           meta=dict(meta), steps=steps)
 
 
 # 六方格子的三个高对称面内位置：A 位、B 位与两个空位（分数坐标）。
