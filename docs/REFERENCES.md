@@ -126,6 +126,51 @@
    - 注：graphane 的 α₂D 数值未在正文给出（仅图示），
      故未用作 preset 默认值；如需 graphane 激子参数需补文献。
 
+## 多层堆叠引擎（2026-10-30，大目标 D）
+
+11. **2H/3R 堆叠多型描述（结构构建器 `structure/multilayer.py`）**
+   - 2H（P6₃/mmc）：逐层 180° 翻转、反演对称；3R（R3m）：所有层
+     同向、逐层横向错位（ABC 序列）、无反演对称（面外极化，
+     任意层数 SHG 允许）。区别的本质是"翻转/不翻转"，由
+     `stack_2h`/`stack_3r` 的变换序列显式表达。
+   - 来源：P. Kumar et al., "Rhombohedral 3R MoS₂ Polytype: ..."
+     （2025 综述，[PMC12530023](https://pmc.ncbi.nlm.nih.gov/articles/PMC12530023/)）
+     的 2H/3R 对比描述；2H-MoS₂ 体相坐标（Mo 2c / S 4f）的独立距离
+     验算同 [12]。
+12. **2H-MoS₂ 体相结构数据（`builders.tmd_bilayer` 回归锚点）**
+   Acta Cryst. **B39**, 404 (1983)（P6₃/mmc，c/2 = 6.15 Å 层间距，
+   Mo–Mo 跨层垂直分量锚点；层间最近 S–S ≈ 3.49 Å vdW 接触）。
+13. **Harrison 键长标度（层间耦合生成器 `engine/multilayer.py`）**
+   W. A. Harrison, *Electronic Structure and the Properties of Solids:
+   The Physics of the Chemical Bond* (Freeman, 1980; Dover, 1989)：
+   普适矩阵元 V = η·ħ²/(m d²)——对所有 SK 通道 n = 2（本实现默认
+   `HARRISON_EXPONENT = 2.0`）；η 常数表含 η_ppσ = 3.24、
+   η_ppπ = −0.81（本实现只使用其**比值**分配 p-p 双通道，
+   绝对值由单层拟合表标定）。与相邻代码同形式：
+   QTCAD V(d) = V(d₀)(d₀/d)^η、NEMO-3D t = l′V(d₀)(d₀/d)^η
+   （见下文 sp³d⁵ 节的 2026-10-17 网络核查）。
+14. **McCann & Fal'ko（双层石墨烯 γ₁，蜂窝多层模型标定）**
+   E. McCann, D. S. L. Abergel, V. I. Fal'ko,
+   Eur. Phys. J. Special Topics **148**, 41 (2007) 及其中引文：
+   AB 双层二聚位耦合 γ₁ = 0.4 eV、层间距 3.35 Å（石墨实验值）。
+   蜂窝多层引擎的层间参考耦合由此标定（垂直二聚位 = V_ppσ(d₀)）。
+15. **Mak, Lee, Hone, Shan & Heinz 2010（多层 MoS₂ 带隙-层数锚点）**
+   K. F. Mak, C. Lee, J. Hone, J. Shan, T. F. Heinz,
+   "Atomically Thin MoS₂: A New Direct-Gap Semiconductor",
+   *Phys. Rev. Lett.* **105**, 136805 (2010).
+   arXiv: [1004.0546](https://arxiv.org/abs/1004.0546)
+   （原文 PDF：`papers/arxiv/mak2010/`）
+   - 原文数值：bulk 间接隙 **1.29 eV**；单层直接隙（PL A 峰）
+     **1.90 eV**；双层间接隙（PL I 峰 / 光电导阈值）**1.59 eV**；
+     体相 K 点直接隙 ~1.8 eV（减薄仅上移 0.1 eV）；
+     间接隙从 bulk 到单层上移 >0.6 eV。
+   - 机制：Γ 点价带（p_z 型）层间杂化使 VBM 随层数向 Γ 迁移、
+     CBM 沿 Γ–K——间接→直接交叉。多层引擎的机制量以此为锚。
+   - **定量对账现状（诚实声明）**：被 T16-SK 阻塞——Zahid 表 +
+     现装配约定下单层在一般 k 点**跨 k 带交叠**（金属化，见下文
+     sp³d⁵ 节 2026-10-30 补记），gap-vs-N 序列（常用取整
+     1.8→1.5→1.3→1.2 eV）不可达；出路见该节。
+
 ## 已删除/待定
 （无）
 
@@ -226,3 +271,17 @@ conjugate_fill=False)` 重跑，回归见 `tests/test_zahid_mos2.py::TestKnownIs
 K_v2→K_c = 1.969 eV（劈裂 0.164 eV）、m_e* ≈ 0.43 m₀、
 m_h* ≈ 0.463 m₀；当前数值在 GUI/CLI/文档中一致标为
 "实验性/不得作定量参考"。对账入口：`python examples/sk_convention_scan.py`。
+
+**2026-10-30 补记（多层引擎引发的新观察）**：多层堆叠引擎
+（`engine/multilayer.py::MoS2MultilayerModel`）交付时对解耦极限做
+全 k 对账，发现现模型不只是"K 点带隙偏低"——在**一般 k 点跨 k
+带交叠（金属化）**：builder 几何下网格间接隙 −0.07 eV（SOC）/
+−0.24 eV（无 SOC），VBM@(0.15,0.15) 高于 CBM@(0.25,0.25)。此前
+文档只记录过 K 点数值（0.98 eV），一般 k 的带交叠是新数据点，
+说明装配约定错配影响全 BZ 而非只影响带边。该状态由
+`tests/test_multilayer_model.py::TestDocumentedBlockage` 固化；
+多层 gap-vs-N 定量对账（Mak 2010 序列，[15]）因此不可达。
+**出路**：① 装配约定解决（Nanoskif 手册）；② DFT→TB 自拟合
+（`vdw_studio.fitting`，多层模型已参数化就绪）。蜂窝族多层引擎
+（`HoneycombMultilayerModel`）不受此影响，是耦合生成器的定量
+验证锚点（AB 双层与 BilayerGrapheneModel 逐位一致等）。
