@@ -10,11 +10,15 @@
 - (b) moiré 有效质量与层间激子束缚能随 θ 的变化——小转角平带化
   使质量暴涨、束缚能增强（Wu–Lovorn–MacDonald 式连续近似的单带
   最小模型；层间激子用共面 2D 近似，见 analysis.interlayer_exciton
-  的诚实标注）。
+  的诚实标注）；
+- (c) **完整 k·p 层哈密顿量版**（Kormányos 4×4 层块，含 SOC/翘曲/
+  电子-空穴不对称）的 Eb(θ) 与单带模型对比——两条曲线在
+  Berkelbach 标定链上衔接（γ=0 时 μ ≈ 0.25 m₀）。
 
 模型与验证锚点见 ``engine.moire_tmd``（T=0 解耦、C₃、二阶弱耦合、
-平带化）与 ``tests/test_interlayer_exciton.py``（t=0 衔接 Berkelbach
-标定链）。
+平带化；k·p 版另含解耦质量 = Kormányos 单层质量锚点）与
+``tests/test_interlayer_exciton.py``（t=0 衔接 Berkelbach 标定链；
+k·p 管线见 TestKpPipeline）。
 """
 
 import matplotlib
@@ -27,7 +31,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 
-from vdw_studio.analysis.interlayer_exciton import interlayer_exciton_vs_theta
+from vdw_studio.analysis.interlayer_exciton import (
+    interlayer_exciton_report_kp,
+    interlayer_exciton_vs_theta,
+)
 from vdw_studio.engine.moire_tmd import TwistedTMDBilayer
 from vdw_studio.visualization import setup_cjk_fonts
 
@@ -68,14 +75,36 @@ def exciton_panel(ax, thetas: np.ndarray) -> None:
     ax.legend(lines, [line.get_label() for line in lines], fontsize=8)
 
 
+def kp_comparison_panel(ax, thetas: np.ndarray) -> None:
+    """(c) 完整 k·p 层哈密顿量版 vs 单带模型的 Eb(θ) 对比。"""
+    kp = [interlayer_exciton_report_kp(t, shells=(2, 3)) for t in thetas]
+    single = interlayer_exciton_vs_theta(thetas, t_interlayer=0.020, shells=(2, 3))
+    ax.plot(thetas, [r.binding_ev * 1e3 for r in single], "s--", ms=4,
+            color="#1f4e79", label="single-band (T = 20 meV)" if not setup_cjk_fonts()
+            else "单带模型 (T = 20 meV)")
+    ax.plot(thetas, [r.binding_ev * 1e3 for r in kp], "o-", ms=4,
+            color="#c0392b", label="full k·p (Kormányos)" if not setup_cjk_fonts()
+            else "完整 k·p (Kormányos)")
+    ax.set_xscale("log")
+    ax.set_xlabel("转角 θ (°)" if setup_cjk_fonts() else "twist angle θ (°)")
+    ax.set_ylabel("层间激子束缚能 (meV)" if setup_cjk_fonts()
+                  else "interlayer exciton binding (meV)")
+    ax.set_title("k·p 层哈密顿量 vs 单带" if setup_cjk_fonts()
+                 else "full k·p vs single-band layers")
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=8)
+
+
 def main() -> None:
     out = Path(__file__).parent / "output"
     out.mkdir(exist_ok=True)
     has_cjk = setup_cjk_fonts()
 
-    fig, axes = __import__("matplotlib.pyplot", fromlist=["plt"]).subplots(1, 2, figsize=(10, 4))
+    thetas = np.array([0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0])
+    fig, axes = __import__("matplotlib.pyplot", fromlist=["plt"]).subplots(1, 3, figsize=(14, 4))
     moire_bands_panel(axes[0])
-    exciton_panel(axes[1], np.array([0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0]))
+    exciton_panel(axes[1], thetas)
+    kp_comparison_panel(axes[2], thetas)
     fig.tight_layout()
     target = out / "twisted_tmd_exciton.png"
     fig.savefig(target, dpi=200, bbox_inches="tight")
@@ -83,8 +112,13 @@ def main() -> None:
 
     # 终端摘要
     reports = interlayer_exciton_vs_theta([1.0, 2.0, 5.0], t_interlayer=0.020, shells=(2, 3))
-    print("θ(°)   m_e(m0)  m_h(m0)  E_b(eV)  带宽(meV)  converged")
+    print("θ(°)   m_e(m0)  m_h(m0)  E_b(eV)  带宽(meV)  converged   [单带模型]")
     for r in reports:
+        print(f"{r.theta_deg:5.2f}  {r.m_e_m0:7.3f}  {r.m_h_m0:7.3f}  "
+              f"{r.binding_ev:7.4f}  {r.flat_band_width_ev * 1e3:8.1f}  {r.converged}")
+    print("\nθ(°)   m_e(m0)  m_h(m0)  E_b(eV)  带宽(meV)  converged   [完整 k·p]")
+    for t in (1.0, 2.0, 5.0):
+        r = interlayer_exciton_report_kp(t, shells=(2, 3))
         print(f"{r.theta_deg:5.2f}  {r.m_e_m0:7.3f}  {r.m_h_m0:7.3f}  "
               f"{r.binding_ev:7.4f}  {r.flat_band_width_ev * 1e3:8.1f}  {r.converged}")
     if not has_cjk:

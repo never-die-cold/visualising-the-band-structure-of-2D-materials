@@ -14,6 +14,7 @@ from vdw_studio.analysis.interlayer_exciton import (
     MOS2_M_H,
     MOS2_R0,
     interlayer_exciton_report,
+    interlayer_exciton_report_kp,
 )
 from vdw_studio.analysis.exciton import solve_exciton
 
@@ -53,3 +54,38 @@ def test_invalid_inputs_rejected():
         interlayer_exciton_report(0.0)
     with pytest.raises(ValueError, match="shells"):
         interlayer_exciton_report(2.0, shells=(3,))
+
+
+class TestKpPipeline:
+    """完整 k·p 层哈密顿量版的层间激子管线（T17 剩余项）。"""
+
+    def test_decoupled_masses_match_kormanyos(self):
+        """γ=0：moiré 质量精确退回单层 Kormányos 质量（自旋分辨带边）。"""
+        from vdw_studio.engine.kp_tmd import TMDKpModel, TMDKpParams
+
+        report = interlayer_exciton_report_kp(5.0, gamma_cb=0.0, gamma_vb=0.0,
+                                              n_levels=1)
+        kp = TMDKpModel(TMDKpParams.from_library("MoS2", "dft"))
+        m_e_ref = kp.effective_mass(band="cb", spin=-1, valley=+1,
+                                    direction=(1.0, 0.0))
+        m_h_ref = kp.effective_mass(band="vb", spin=+1, valley=+1,
+                                    direction=(1.0, 0.0))
+        assert report.m_e_m0 == pytest.approx(m_e_ref, rel=1e-6)
+        assert report.m_h_m0 == pytest.approx(m_h_ref, rel=1e-6)
+        # 与 Berkelbach 标定链衔接（μ ≈ 0.25）
+        assert report.mu_over_m0 == pytest.approx(0.25, abs=0.01)
+        assert 0.54 <= report.binding_ev <= 0.54 * 1.10
+
+    def test_binding_grows_toward_small_angle(self):
+        """平带化单调性：θ 减小 → moiré 质量增大 → 束缚能增大。"""
+        wide = interlayer_exciton_report_kp(5.0, n_levels=1)
+        flat = interlayer_exciton_report_kp(1.0, n_levels=1)
+        assert flat.m_e_m0 > wide.m_e_m0
+        assert flat.m_h_m0 > wide.m_h_m0
+        assert flat.binding_ev > wide.binding_ev
+
+    def test_invalid_inputs_rejected(self):
+        with pytest.raises(ValueError, match="θ 必须为正"):
+            interlayer_exciton_report_kp(0.0)
+        with pytest.raises(ValueError, match="shells"):
+            interlayer_exciton_report_kp(2.0, shells=(3,))

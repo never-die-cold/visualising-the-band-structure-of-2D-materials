@@ -22,11 +22,11 @@ Table 3/4）；r₀ = 2πχ₂D = 6.60 Å（Berkelbach 2013/Cudazzo 2011，
 """
 
 from dataclasses import dataclass
-from typing import List, Sequence
+from typing import List, Optional, Sequence
 
 import numpy as np
 
-from ..engine.moire_tmd import TwistedTMDBilayer
+from ..engine.moire_tmd import TwistedTMDKp, TwistedTMDBilayer
 from .exciton import solve_exciton
 
 # MoS₂ 单层参数（Kormányos 2015 Table 3/4；Berkelbach 2013 的 r₀）
@@ -106,3 +106,68 @@ def interlayer_exciton_report(theta_deg: float, *,
 def interlayer_exciton_vs_theta(theta_list: Sequence[float], **kwargs) -> List[InterlayerExcitonResult]:
     """转角序列的层间激子报告（逐角计算，供 Eb(θ) 曲线使用）。"""
     return [interlayer_exciton_report(theta, **kwargs) for theta in theta_list]
+
+
+# ----------------------------------------------------------------------
+# 完整 k·p 层哈密顿量版（T17 剩余项）
+# ----------------------------------------------------------------------
+def _flat_band_width_kp(model: TwistedTMDKp, n_points: int = 12) -> float:
+    """导带底 moiré 带在 Γ–M 方向的带宽（eV）。"""
+    k_list = np.column_stack((np.linspace(0.0, model.geom.k_theta, n_points),
+                              np.zeros(n_points)))
+    e = model.bands(k_list)
+    return float(e[:, model.i_cb_bottom].max() - e[:, model.i_cb_bottom].min())
+
+
+def interlayer_exciton_report_kp(theta_deg: float, *,
+                                 material: str = "MoS2", source: str = "dft",
+                                 a_lattice: Optional[float] = None,
+                                 valley: int = +1,
+                                 gamma_cb: float = 0.020,
+                                 gamma_vb: float = 0.020,
+                                 r0: float = MOS2_R0,
+                                 eps_env: float = 1.0,
+                                 shells: Sequence[int] = (2, 3),
+                                 n_levels: int = 1) -> InterlayerExcitonResult:
+    """完整 k·p 层哈密顿量版的层间激子报告。
+
+    与 :func:`interlayer_exciton_report` 的唯一差别是 moiré 有效质量的
+    来源：电子取 :class:`~vdw_studio.engine.moire_tmd.TwistedTMDKp`
+    （Kormányos 4×4 层块，含 SOC 劈裂、三角翘曲、电子-空穴不对称）的
+    **导带底** moiré 带、空穴取**价带顶** moiré 带（同一模型实例；
+    自旋分辨的带边自动进入，不再用各向同性抛物线输入）。其余链条
+    （μ → Rytova–Keldysh DVR）与共面 2D 近似的诚实标注不变。
+
+    γ=0 时质量精确退回单层 Kormányos 质量（回归锚点：
+    ``tests/test_interlayer_exciton.py::TestKpPipeline``）。
+    """
+    if not np.isfinite(theta_deg) or theta_deg <= 0:
+        raise ValueError("θ 必须为正")
+    shells = sorted({int(s) for s in shells})
+    if len(shells) < 2 or shells[0] < 1:
+        raise ValueError("shells 需要至少两个递增壳层做收敛检查")
+
+    def build(n_shells: int) -> TwistedTMDKp:
+        return TwistedTMDKp(theta_deg=theta_deg, a_lattice=a_lattice,
+                            material=material, source=source,
+                            valley=valley, gamma_cb=gamma_cb,
+                            gamma_vb=gamma_vb, n_shells=n_shells)
+
+    m_top = build(shells[-1])
+    m_e = m_top.moire_effective_mass(m_top.i_cb_bottom)
+    m_h = m_top.moire_effective_mass(m_top.i_vb_top)
+    mu = m_e * m_h / (m_e + m_h)
+    exciton = solve_exciton(mu_over_m0=mu, eps_env=eps_env, r0=r0,
+                            n_levels=n_levels)
+
+    widths = {n: _flat_band_width_kp(build(n)) for n in shells}
+    w = widths[shells[-1]]
+    converged = abs(widths[shells[-1]] - widths[shells[0]]) < 0.05 * max(w, 1e-4)
+
+    return InterlayerExcitonResult(
+        theta_deg=float(theta_deg), m_e_m0=float(m_e), m_h_m0=float(m_h),
+        mu_over_m0=float(mu), binding_ev=float(exciton.binding_1s),
+        flat_band_width_ev=float(w),
+        widths_by_shells={int(k): float(v) for k, v in widths.items()},
+        converged=bool(converged),
+    )
