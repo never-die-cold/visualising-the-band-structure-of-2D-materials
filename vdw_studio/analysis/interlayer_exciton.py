@@ -10,9 +10,13 @@
    （``analysis.exciton.solve_exciton``，库仑极限与文献变分对账）。
 
 近似说明（诚实标注）：层间激子的电子/空穴分居两层，真实相互作用含
-层间距离 d 的修正；本管线用**共面 2D 近似**（d → 0 的束缚能上界），
-d 的定量削弱与 moiré 势的空间结构（电子-空穴在不同层位阱）留待
-Keldysh 势的层间推广。
+层间距离 d 的修正。k·p 版报告（:func:`interlayer_exciton_report_kp`）
+现支持 ``interlayer_d`` 参数——Rytova–Keldysh 势的层间推广
+（``analysis.exciton.keldysh_potential_interlayer``，2026-10-30 交付：
+动量空间精确真空传播 e^{−qd} + 单层屏蔽，d=0 严格退回共面、r₀→0
+严格退回三维层间库仑）；共面结果（不传 d）保持为 d→0 上界。
+单带版报告维持共面近似。moiré 势的空间结构（电子-空穴在不同层位阱）
+仍留待后续。
 
 文献参数：MoS₂ 单层 m_e = 0.55、m_h = 0.47 m₀（Kormányos 2015
 Table 3/4）；r₀ = 2πχ₂D = 6.60 Å（Berkelbach 2013/Cudazzo 2011，
@@ -127,16 +131,23 @@ def interlayer_exciton_report_kp(theta_deg: float, *,
                                  gamma_vb: float = 0.020,
                                  r0: float = MOS2_R0,
                                  eps_env: float = 1.0,
+                                 interlayer_d: Optional[float] = None,
                                  shells: Sequence[int] = (2, 3),
                                  n_levels: int = 1) -> InterlayerExcitonResult:
     """完整 k·p 层哈密顿量版的层间激子报告。
 
-    与 :func:`interlayer_exciton_report` 的唯一差别是 moiré 有效质量的
-    来源：电子取 :class:`~vdw_studio.engine.moire_tmd.TwistedTMDKp`
-    （Kormányos 4×4 层块，含 SOC 劈裂、三角翘曲、电子-空穴不对称）的
-    **导带底** moiré 带、空穴取**价带顶** moiré 带（同一模型实例；
-    自旋分辨的带边自动进入，不再用各向同性抛物线输入）。其余链条
-    （μ → Rytova–Keldysh DVR）与共面 2D 近似的诚实标注不变。
+    与 :func:`interlayer_exciton_report` 的差别：
+
+    - moiré 有效质量来自 :class:`~vdw_studio.engine.moire_tmd.TwistedTMDKp`
+      （Kormányos 4×4 层块，含 SOC 劈裂、三角翘曲、电子-空穴不对称）：
+      电子取**导带底** moiré 带、空穴取**价带顶** moiré 带（同一实例，
+      自旋分辨带边自动进入）；
+    - ``interlayer_d``：电子–空穴层间分离 (Å)。None（默认）= 共面 2D
+      近似（束缚能上界）；给出正值时势取 Rytova–Keldysh 的层间推广
+      （``analysis.exciton.keldysh_potential_interlayer``：屏蔽层同
+      r₀ + 精确真空传播 e^{−qd}），束缚能随 d 单调削弱——
+      扭转双层 TMD 的层间距 ~6.5 Å 量级时修正可观（MoS₂ 默认参数下
+      共面 0.55 → d=6.5 Å 时 ~0.38 eV）。
 
     γ=0 时质量精确退回单层 Kormányos 质量（回归锚点：
     ``tests/test_interlayer_exciton.py::TestKpPipeline``）。
@@ -158,7 +169,7 @@ def interlayer_exciton_report_kp(theta_deg: float, *,
     m_h = m_top.moire_effective_mass(m_top.i_vb_top)
     mu = m_e * m_h / (m_e + m_h)
     exciton = solve_exciton(mu_over_m0=mu, eps_env=eps_env, r0=r0,
-                            n_levels=n_levels)
+                            n_levels=n_levels, interlayer_d=interlayer_d)
 
     widths = {n: _flat_band_width_kp(build(n)) for n in shells}
     w = widths[shells[-1]]

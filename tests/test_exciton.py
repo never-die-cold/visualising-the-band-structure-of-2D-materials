@@ -193,3 +193,65 @@ class TestApi:
         assert special.j0((j0[0] / R) * R) == pytest.approx(0., abs=1e-12)
         # J₀(j₀,ₙ) = 0
         assert np.all(np.abs(special.j0(j0)) < 1e-12)
+
+
+class TestInterlayerSeparation:
+    """层间分离 d 的 Rytova–Keldysh 推广（大目标 C 剩余项）。
+
+    锚点：d=0 严格退回共面 RK；r₀→0 严格退回三维层间库仑；
+    束缚能随 d 单调削弱（共面近似为上界）。
+    """
+
+    def test_potential_d_zero_delegates_to_coplanar(self):
+        from vdw_studio.analysis.exciton import keldysh_potential_interlayer
+        r = np.array([0.5, 2.0, 10.0, 50.0, 200.0])
+        np.testing.assert_allclose(
+            keldysh_potential_interlayer(r, 41.47, 0.0),
+            keldysh_potential(r, 41.47), rtol=0, atol=1e-14)
+
+    def test_potential_r0_to_zero_is_3d_interplane_coulomb(self):
+        from vdw_studio.analysis.exciton import (
+            interlayer_coulomb_potential,
+            keldysh_potential_interlayer,
+        )
+        r = np.array([1.0, 3.0, 10.0, 40.0])
+        d = 6.5
+        np.testing.assert_allclose(
+            keldysh_potential_interlayer(r, 1e-7, d),
+            interlayer_coulomb_potential(r, d), rtol=1e-6)
+        # 解析参考：−e²/(4πε₀·√(r²+d²))
+        np.testing.assert_allclose(interlayer_coulomb_potential(r, d),
+                                   -14.3996 / np.sqrt(r ** 2 + d ** 2),
+                                   rtol=0, atol=1e-12)
+
+    def test_potential_smooth_across_small_d(self):
+        """d→0⁺ 连续：小 d 的势逐点趋于共面值（Laguerre 分支收敛）。"""
+        from vdw_studio.analysis.exciton import keldysh_potential_interlayer
+        r = np.array([2.0, 10.0, 41.5])
+        v_small = keldysh_potential_interlayer(r, 41.47, 0.01)
+        v_coplanar = keldysh_potential(r, 41.47)
+        np.testing.assert_allclose(v_small, v_coplanar, rtol=2e-3, atol=0.0)
+
+    def test_binding_decreases_with_separation(self):
+        prev = None
+        for d in (0.0, 3.0, 6.5, 13.0):
+            res = solve_exciton(mu_over_m0=0.25, r0=41.47, n_levels=1,
+                                interlayer_d=d)
+            assert res.binding_1s is not None and res.binding_1s > 0
+            if prev is not None:
+                assert res.binding_1s < prev
+            prev = res.binding_1s
+
+    def test_coulomb_interlayer_branch(self):
+        """r0=None + d>0：三维层间库仑支可用且弱于共面库仑。"""
+        flat = solve_exciton(mu_over_m0=0.25, r0=None, n_levels=1)
+        sep = solve_exciton(mu_over_m0=0.25, r0=None, n_levels=1,
+                            interlayer_d=6.5)
+        assert sep.binding_1s < flat.binding_1s
+
+    def test_invalid_d_rejected(self):
+        with pytest.raises(ValueError):
+            solve_exciton(r0=41.47, interlayer_d=-1.0)
+        from vdw_studio.analysis.exciton import keldysh_potential_interlayer
+        with pytest.raises(ValueError):
+            keldysh_potential_interlayer([1.0], 41.47, -0.5)

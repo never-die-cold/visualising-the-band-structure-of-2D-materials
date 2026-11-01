@@ -89,3 +89,16 @@ class TestKpPipeline:
             interlayer_exciton_report_kp(0.0)
         with pytest.raises(ValueError, match="shells"):
             interlayer_exciton_report_kp(2.0, shells=(3,))
+
+    def test_interlayer_separation_weakens_binding(self):
+        """层间分离 d>0 的束缚能低于共面近似（上界），且随 d 单调。"""
+        coplanar = interlayer_exciton_report_kp(2.0, n_levels=1)
+        separated = interlayer_exciton_report_kp(2.0, interlayer_d=6.5,
+                                                 n_levels=1)
+        farther = interlayer_exciton_report_kp(2.0, interlayer_d=13.0,
+                                               n_levels=1)
+        assert separated.binding_ev < coplanar.binding_ev
+        assert farther.binding_ev < separated.binding_ev
+        # MoS₂ 默认参数、θ=2° 的量级（诚实记录，不凑数）：共面 ~0.73，
+        # d=6.5 Å 时 ~0.50 eV 量级
+        assert 0.40 < separated.binding_ev < coplanar.binding_ev

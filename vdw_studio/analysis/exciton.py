@@ -84,20 +84,93 @@ def coulomb_potential(r, eps_env: float = 1.0) -> np.ndarray:
     return -COULOMB_CONST / (eps_env * r)
 
 
-def _r_times_potential(r: np.ndarray, r0: Optional[float],
-                       eps_env: float) -> np.ndarray:
+# Gauss–Laguerre 节点（模块级缓存；层间势的光滑指数型积分一次算好）
+_LAGUERRE_CACHE: dict = {}
+
+
+def _laguerre_nodes(n: int):
+    if n not in _LAGUERRE_CACHE:
+        _LAGUERRE_CACHE[n] = special.roots_laguerre(n)
+    return _LAGUERRE_CACHE[n]
+
+
+def keldysh_potential_interlayer(r, r0: float, d: float,
+                                 eps_env: float = 1.0) -> np.ndarray:
+    """层间分离 d 的 Rytova–Keldysh 屏势 (eV)，吸引（负值）。
+
+    电子与空穴分居相距 d (Å) 的两层：动量空间在共面势上乘真空传播
+    因子 e^{−qd}（2D 屏蔽单层近似：屏蔽来自同一 r₀ 的极化层，层间
+    传播为真空）::
+
+        V_d(q) = V_RK(q)·e^{−qd}，  V_RK(q) = −(e²/4πε₀ε_env)/(q(1+r₀q))
+
+    经 Laplace–Bessel 恒等式（∫J₀(qr)e^{−βq}dq = 1/√(r²+β²)）化为
+    Gauss–Laguerre 可积的光滑形式::
+
+        V_d(r) = −(e²/4πε₀ε_env) ∫₀^∞ e^{−u} / √(r² + (d+r₀u)²) du
+
+    两个解析锚点（tests/test_exciton.py）：
+
+    - d = 0：严格退回 :func:`keldysh_potential`（∫e^{−u}/√(x²+u²)du
+      = (π/2)[H₀−Y₀] 正是 RK 势的积分表示）——实现中直接委托；
+    - r₀ → 0：严格退回三维层间库仑 −e²/(4πε₀ε_env·√(r²+d²))
+      （屏蔽层不再起作用，真空传播保留）。
+
+    近似层级（诚实标注）：单层屏蔽 + 精确真空传播；未含双层各自
+    极化的更细结构。
+    """
+    r0 = finite_scalar(r0, 'r0', positive=True)
+    d = finite_scalar(d, 'd')
+    if d < 0:
+        raise ValueError('层间分离 d 必须 ≥ 0')
+    eps_env = finite_scalar(eps_env, 'eps_env', positive=True)
+    r = np.asarray(r, dtype=float)
+    if not np.isfinite(r).all() or np.any(r <= 0):
+        raise ValueError('r must contain finite positive radii')
+    if d == 0.0:
+        return keldysh_potential(r, r0, eps_env)
+    nodes, weights = _laguerre_nodes(200)
+    u = d + r0 * nodes
+    g = 1.0 / np.sqrt(r[..., None] ** 2 + u[None, :] ** 2)
+    return -(COULOMB_CONST / eps_env) * (g @ weights)
+
+
+def interlayer_coulomb_potential(r, d: float, eps_env: float = 1.0) -> np.ndarray:
+    """三维层间库仑势 −e²/(4πε₀ε_env·√(r²+d²)) (eV)。
+
+    :func:`keldysh_potential_interlayer` 的 r₀→0 极限，独立给出以便
+    极限锚点直接对账。
+    """
+    d = finite_scalar(d, 'd')
+    if d < 0:
+        raise ValueError('层间分离 d 必须 ≥ 0')
+    eps_env = finite_scalar(eps_env, 'eps_env', positive=True)
+    r = np.asarray(r, dtype=float)
+    if not np.isfinite(r).all() or np.any(r <= 0):
+        raise ValueError('r must contain finite positive radii')
+    return -COULOMB_CONST / (eps_env * np.sqrt(r ** 2 + d ** 2))
+
+
+def _r_times_potential(r: np.ndarray, r0: Optional[float], eps_env: float,
+                       interlayer_d: Optional[float] = None) -> np.ndarray:
     """积分核 w(r) = r·V(r)：r→0 极限解析处理（避免 0·∞）。
 
     - 纯库仑：r·V → −e²/(4πε₀ε_env)（有限常数）；
-    - Keldysh：ρ(H₀−Y₀) → 0，故 r·V → 0。
+    - Keldysh（共面或层间）：V 在 r→0 有限（共面为 0，层间为
+      −C∫e^{−u}/(d+r₀u)du），故 r·V → 0。
     """
     w = np.empty_like(r)
-    if r0 is None:
+    if r0 is None and interlayer_d is None:
         w[1:] = coulomb_potential(r[1:], eps_env) * r[1:]
         w[0] = -COULOMB_CONST / eps_env
+    elif r0 is None:
+        w[0] = 0.0
+        w[1:] = interlayer_coulomb_potential(r[1:], interlayer_d,
+                                             eps_env) * r[1:]
     else:
         w[0] = 0.0
-        w[1:] = keldysh_potential(r[1:], r0, eps_env) * r[1:]
+        w[1:] = keldysh_potential_interlayer(r[1:], r0, interlayer_d or 0.0,
+                                             eps_env) * r[1:]
     return w
 
 
@@ -112,6 +185,7 @@ class ExcitonResult:
     mu_over_m0: float         # 约化质量 (m₀ 单位)
     r_max: float = 0.0        # 径向盒子尺寸 (Å)
     n_basis: int = 0          # Bessel 基函数数目
+    interlayer_d: float = 0.0  # 层间分离 (Å)；0 = 共面
     status: str = 'bound-states-found'
     requested_levels: int = 0
     bound_states_in_basis: int = 0
@@ -127,7 +201,8 @@ def solve_exciton(mu_over_m0: float = 0.25,
                   n_levels: int = 4,
                   n_basis: int = 250,
                   n_quad: int = 6000,
-                  r_max: Optional[float] = None) -> ExcitonResult:
+                  r_max: Optional[float] = None,
+                  interlayer_d: Optional[float] = None) -> ExcitonResult:
     """求解 2D 激子径向方程（m=0 通道，s 态序列；Fourier–Bessel DVR）。
 
     参数:
@@ -140,6 +215,10 @@ def solve_exciton(mu_over_m0: float = 0.25,
         r_max: 径向盒子半径 (Å)；默认按有效玻尔半径自适应
                （库仑: a* = ε·(m₀/μ)·0.529 Å，取 40a*；
                 Keldysh: 取 40·r₀ 与 30a* 的较大者）。
+        interlayer_d: 电子–空穴层间分离 (Å)；None/0 = 共面（原行为，
+            束缚能上界）。>0 时势取 Rytova–Keldysh 的层间推广
+            （见 :func:`keldysh_potential_interlayer`；r0=None 时为
+            三维层间库仑）。层间激子的真实束缚能低于共面近似。
 
     返回:
         :class:`ExcitonResult`（能量升序，负值为束缚态）。
@@ -157,6 +236,10 @@ def solve_exciton(mu_over_m0: float = 0.25,
         raise ValueError('n_quad must be at least n_basis + 1 to resolve the basis')
     if r_max is not None:
         r_max = finite_scalar(r_max, 'r_max', positive=True)
+    if interlayer_d is not None:
+        interlayer_d = finite_scalar(interlayer_d, 'interlayer_d')
+        if interlayer_d < 0:
+            raise ValueError('interlayer_d 必须 ≥ 0')
     hbar2_over_2mu = HBAR2_OVER_2M0 / mu_over_m0   # ħ²/(2μ) eV·Å²
 
     if r_max is None:
@@ -175,7 +258,7 @@ def solve_exciton(mu_over_m0: float = 0.25,
     # 势能矩阵 (梯形求积; 核 r·V(r) 在 r=0 有限)
     r = np.linspace(0.0, r_max, n_quad)
     dr = r[1] - r[0]
-    w = _r_times_potential(r, r0, eps_env)              # r·V(r)
+    w = _r_times_potential(r, r0, eps_env, interlayer_d)   # r·V(r)
     qw = np.full(n_quad, dr)
     qw[0] *= 0.5
     qw[-1] *= 0.5
@@ -191,5 +274,6 @@ def solve_exciton(mu_over_m0: float = 0.25,
     return ExcitonResult(energies=bound, binding_1s=float(-bound[0]) if len(bound) else None,
                          r0=r0, eps_env=eps_env,
                          mu_over_m0=mu_over_m0,
-                         r_max=float(r_max), n_basis=int(n_basis), status=status,
+                         r_max=float(r_max), n_basis=int(n_basis),
+                         interlayer_d=float(interlayer_d or 0.0), status=status,
                          requested_levels=n_levels, bound_states_in_basis=len(all_bound))
