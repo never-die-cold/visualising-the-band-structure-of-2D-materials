@@ -100,7 +100,15 @@
    Eb=0.553 eV；θ 5°→1° 时 Eb 0.58→0.91 eV）；单带 vs k·p 的 Eb(θ)
    在 0.5°–5° 吻合到 1–3%（示例面板 (c) 交叉验证）。
    顺带修复 `kp_tmd.py` 的 H_cub 转录错误（C₃ 恢复，见 REFERENCES [1]）。
-   ⬜ 剩余：层间距离修正的 Keldysh 推广、与转角 TMD 激子文献的定量对账
+   ✅ **层间距离修正的 Keldysh 推广已交付（2026-10-30）**：
+   `analysis/exciton.py::keldysh_potential_interlayer`（动量空间精确
+   真空传播 e^{−qd} + 单层屏蔽 → Gauss–Laguerre 可积形式；d=0 严格
+   退回共面 RK、r₀→0 严格退回三维层间库仑两锚点内建）+
+   `solve_exciton(interlayer_d=…)` + k·p 报告接入。物理量级：
+   MoS₂ 默认参数下共面 0.553 → d=6.5 Å 0.380 eV（共面近似确为上界，
+   修正 ~30%）。9 项新回归。
+   ⬜ 剩余：与转角 TMD 激子文献的定量对账；双层各自极化的更细
+   屏蔽结构（当前为单层屏蔽 + 精确传播，已在 docstring 标注）
 4. ⬜ 大超胞求解器优化（连续模型已规避大超胞；稀疏化按需）
 5. ✅ **通用多层堆叠引擎（大目标 D，2026-10-30）**：
    `structure/multilayer.py`（N 层构建器：显式层序 / 2H / 3R / Bernal /
