@@ -1,0 +1,820 @@
+This is a self-archived version of an original article. This version may differ from the original in pagination and typographic details.
+Author(s): Ovesen, Simon; Brem, Samuel; Linderälv, Christopher; Kuisma, Mikael; Korn,
+Tobias; Erhart, Paul; Selig, Malte; Malic, Ermin
+Title: Interlayer exciton dynamics in van der Waals heterostructures
+Year: 2019 Version: Published version Copyright: © The Author(s) 2019 Rights: CC BY 4.0 Rights url: https://creativecommons.org/licenses/by/4.0/ Please cite the original version:
+Ovesen, S., Brem, S., Linderälv, C., Kuisma, M., Korn, T., Erhart, P., Selig, M., & Malic, E. (2019). Interlayer exciton dynamics in van der Waals heterostructures. Communications Physics, 2, Article 23. https://doi.org/10.1038/s42005-019-0122-z
+The University of Jyväskylä's Rights Retention Strategy (RRS) enables accepted versions (final drafts) to be made openly available through selfarchiving. For more information, see: https://www.jyu.fi/en/rrs
+
+1234567890():,;
+
+ARTICLE
+https://doi.org/10.1038/s42005-019-0122-z
+
+OPEN
+
+Interlayer exciton dynamics in van der Waals heterostructures
+
+Simon Ovesen 1, Samuel Brem 1, Christopher Linderälv1, Mikael Kuisma1,2, Tobias Korn3, Paul Erhart 1, Malte Selig4 & Ermin Malic1
+
+Atomically thin transition metal dichalcogenides can be stacked to van der Waals heterostructures enabling the design of new materials with tailored properties. The strong Coulomb interaction gives rise to interlayer excitons, where electrons and holes are spatially separated in different layers. In this work, we reveal the time- and momentum-dependent elementary processes behind the formation, thermalization and photoemission of interlayer excitons for the exemplary MoSe2-WSe2 heterostructure. We identify tunneling of holes from MoSe2 to WSe2 on a ps timescale as the crucial process for interlayer exciton formation. We also predict a drastic reduction of the formation time as a function of the interlayer energy offset suggesting that interlayer excitons can be externally tuned. Finally, we explain the experimental observation of a dominant photoluminescence from interlayer excitons despite the vanishingly small oscillator strength as a consequence of huge interlayer exciton occupations at low temperatures.
+
+1 Department of Physics, Chalmers University of Technology, 41296 Gothenburg, Sweden. 2 Department of Chemistry, University of Jyväskylä, Nanoscience Center, 40014 Jyväskylä, Finland. 3 Institut für Physik, Universität Rostock, 18059 Rostock, Germany. 4 Institute of Theoretical Physics, Technical University
+Berlin, 10623 Berlin, Germany. Correspondence and requests for materials should be addressed to S.O. (email: simon.ovesen@chalmers.se)
+
+COMMUNICATIONS PHYSICS | (2019)2:23 | https://doi.org/10.1038/s42005-019-0122-z | www.nature.com/commsphys
+
+1
+
+ARTICLE
+
+COMMUNICATIONS PHYSICS | https://doi.org/10.1038/s42005-019-0122-z
+
+A direct band gap in the optical range, efficient electronlight coupling and a remarkably strong Coulomb interaction make transition metal dichalcogenides (TMDs) highly interesting materials for both fundamental research and technological applications1-6. Tightly bound excitons, quasiparticles of Coulomb-bound electron-hole pairs, dominate the optical response of these materials7-14. They have binding energies that are one to two orders of magnitude larger than in conventional materials15,16. As a result, excitonic features are stable at room temperature and dominate the optical response and non-equilibrium dynamics in TMDs. Besides regular bright excitons, TMDs also exhibit a variety of optically forbidden dark excitons17-24, which cannot be addressed optically due to the required momentum transfer or spin flip. The fascinating exciton physics becomes even richer, when considering that atomically thin materials can be vertically stacked to form Van der Waals (vdW) heterostructures1. In these systems the strong Coulomb interaction gives rise to interlayer excitons, where the involved electrons and holes are located in different layers (Fig. 1)25-29. After optical excitation of a regular intralayer exciton (IaX), the hole can tunnel to the other layer forming an interlayer exciton (IeX). Due to an offset in the alignment of the monolayer band structures (type II heterostructures), these interlayer excitons lie energetically below the excitons confined within one layer29 (Fig. 1). Depending on spin and momentum of the states involved, interlayer excitons can be either bright or dark. VdW heterostructures present an emerging field of research, as evidenced by an increasing number of studies, in particular demonstrating the appearance of interlayer excitons in photoluminescence (PL) spectra25,26,28,30-39. In the lowtemperature regime, a pronounced additional resonance is observed at an energy below the intralayer excitons of the single layers26,27,33,40,41. The PL intensity of this low-energy peak is very pronounced compared to the intralayer exciton in the weak excitation regime. This behavior can be traced back to formation of interlayer excitons that due to their spectral position are highly occupied. Furthermore, in time-resolved PL measurements a spectrally narrow resonance was observed exhibiting lifetimes of tens to hundreds of nanoseconds26,27,33,40,41. Theoretical studies of vdW heterostructures have so far been primarily restricted to static observables, such as screening42, excitonic binding energies29, and lattice mismatch effects35. Microscopic insights into the ultrafast dynamics of interlayer excitons have remained literally in the dark yet.
+In this work, we present a comprehensive microscopic study of the ultrafast kinetics of excitons in vdW heterostructures, in particular revealing the elementary timeresolved and energy-resolved processes behind the formation, thermalization and decay of interlayer excitons. We predict the binding energy of 150 meV for the energetically lowest interlayer excitonic state in the exemplary MoSe2-WSe2 heterostructure, as well as a significant reduction of intralayer binding energies by about 30% due to the increased screening within a heterostructure. Moreover, we shed light on the exciton dynamics demonstrating that excited interlayer excitons are formed via hole tunneling on a picosecond timescale, followed by a phonon-driven relaxation to the ground state on a femtosecond timescale. The radiative interlayer recombination is by orders of magnitude slower reflecting the small oscillator strength of spatially separated excitons. Finally, we provide a microscopic explanation for the recently performed time-resolved photoluminescence experiments demonstrating the surprisingly dominant contribution of interlayer excitons at low temperatures.
+
+MoSe2
+
+WSe2
+
+PL
+
+-
+
+ElaX
+
+PL
+
+EleX
+
++ + + E
+
+Tunneling
+
+honons P
+
+Fig. 1 Formation of interlayer excitons. After optically exciting a coherent intralayer exciton (IaX, red oval), incoherent excitons are formed assisted by emission and absorption of phonons. Hole tunneling subsequently converts these into incoherent interlayer excitons (IeX, blue oval). After exciton and thermalization through scattering with phonons, most excitons occupy the energetically lowest interlayer excitonic state EIeX with vanishing center-of mass-momentum. Both IaX and IeX decay radiatively resulting in photoluminescence (PL). The investigated type II heterostructure shows an interlayer energy offset E
+
+Results
+
+Theoretical approach. We investigate the exemplary MoSe2-WSe2 heterostructure on a typical SiO2 substrate. To
+
+bring the system into a non-equilibrium, we apply a laser pulse at
+
+the energy resonant to the 1s exciton of the MoSe2 layer. We
+
+restrict the study to 1s excitons consisting of Coulomb-bound
+
+electrons and holes located at the K point of the Brillouin zone.
+
+To provide microscopic access to the dynamics of the coupled
+
+excitons, phonons and photons, we apply the density matrix formalism43-46 and derive the luminescence Bloch equations explicitly including excitonic effects9,44. The emitted lumines-
+
+cence intensity I(t) is obtained from the temporal change of the photon density and reads44,47.
+
+X 2
+
+2
+
+
+
+ lhle   lhle 
+
+lh le
+
+lh le
+
+IðtÞ /  M0  P0 ðtÞ þN0 ðtÞ LðE Þ
+
+lh le
+
+Here, M0lhle is the optical matrix element for excitons that are composed of electrons in layer le and holes in layer lh. The index 0 indicates that only excitons with vanishing center-of-mass momentum Q = 0 contribute to PL. While the optical matrix
+element can be obtained analytically using a tight-binding
+approach for TMD monolayers and adjusting the coupling strength to experimentally measured absorption9,22, first-
+principle calculations have been performed to determine the coupling for interlayer excitons. The Lorentzian L accounts for
+energy conservation, i.e., an exciton decays into a photon with the
+same energy. We calculate on a microscopic level the components of the dephasing rate  stemming from exciton-phonon and exciton-photon interactions22,48. At lower temperatures disorder-
+induced dephasing becomes important and has been accounted
+for phenomenologically by using the full width at half maximum (FWHM) values measured in ref. 27.
+The PL strength is determined by the excitonic polarization PQlhle ðtÞ reflecting the optically driven coherence (often referred to as coherent excitons43,44) and by the exciton occupation NQlhle describing the formation and thermalization of incoherent
+excitons induced by a non-radiative decay of the excitonic polarization. Equations of motion for PQlhle ðtÞ and NQlhle are derived
+
+2
+
+COMMUNICATIONS PHYSICS | (2019)2:23 | https://doi.org/10.1038/s42005-019-0122-z | www.nature.com/commsphys
+
+COMMUNICATIONS PHYSICS | https://doi.org/10.1038/s42005-019-0122-z
+
+ARTICLE
+
+in the low density regime taking into account exciton-photon coupling giving rise to a spontaneous radiative decay of excitons as well as exciton-phonon coupling allowing for a relaxation of the excited hot exciton distribution into a thermal equilibrium. Furthermore, we take into account the tunneling of carriers between layers. This process is included via the tunneling
+P ab y Hamilton operator HT ¼ a;b T abab, where a, b are compound indices containing layer, band and momentum of the electron. The coupling element T is given by the overlap integral a|VT| b of Bloch waves  with the interlayer potential VT. The appearing spatial overlap of the wavefunctions from different layers is obtained from density functional theory calculations that have been carried out using the gpaw package49. More details on the calculation of the tunneling matrix element can be found in the methods section. Finally, applying the Heisenberg equation of motion, we obtain the luminescence Bloch equations for the excitonic polarization PQlhle ðtÞ and the incoherent exciton occupation NQlhle , see Eqs. (2) and (3) in the methods section. Numerical solution of this coupled set of differential equations provides microscopic access to time-resolved and momentum-resolved formation, relaxation, and radiative decay dynamics of intralayer and interlayer excitons. It allows us to calculate the photoluminescence of heterostructures as a function of time and energy.
+
+Excitonic band structure. The excitonic eigenenergies and wave functions are obtained by solving the Wannier equation9,43,46
+(Equation (1) in the methods section). To obtain the interaction
+potential between charge carriers in a heterostructure, we gen-
+eralize the widely used Keldysh potential for the monolayer case9,50. We solve the Poisson equation for two aligned
+
+Energy (eV)
+
+2.6
+2.4 a
+
+MoSe2
+
+2.2
+
+2
+
+1.8
+
+1.6 1.65 eV 1.4
+
+1.2 -2 -1 0 1 2 Momentum (nm-1)
+
+b MoSe2-WSe2
+1s 2s 3s
+1.39 eV -2 -1 0 1 2
+Momentum (nm-1)
+
+c
+
+WSe2
+
+1.75 eV
+-2 -1 0 1 2 Momentum (nm-1)
+
+Fig. 2 Exciton band structure. Energetically lowest excitonic states (1s, 2s, 3s) for MoSe2 (a) and WSe2 (c) intralayer excitons and the corresponding MoSe2-WSe2 (b) interlayer exciton, respectively. The corresponding excitonic wave functions are shown in Supplementary Fig. 2 and Supplementary Note 2
+
+Table 1 Excitonic binding energies for the MoSe2-WSe2 heterostructure on an SiO2 substrate (vacuum)
+
+Excitonic binding energies (meV)
+
+Heterostructure
+
+MoSe2
+
+WSe2
+
+MoSe2WSe2
+
+1s 205 (317) 177 (271) 150 (246)
+
+2s 74 (153) 56 (124) 58 (128)
+
+3s 39 (98) 28 (76) 31 (82)
+
+Monolayer
+MoSe2
+298 (489) 99 (230) 49 (132)
+
+WSe2
+255 (447) 73 (192) 33 (110)
+
+Solving the Wannier equation we have full access to all excitonic states. The binding energy of the 1s interlayer exciton is smaller than for the intralayer excitons. For higher states the difference becomes smaller. The binding energy of intralayer excitons is significantly reduced due to the increased screening within the heterostructure
+
+homogeneous slabs (Supplementary Fig. 1 and Supplementary Note 1 for more details). The obtained excitonic band structure and the corresponding excitonic wave functions are shown in Fig. 2 for the three energetically lowest excitonic states (1s, 2s, 3s) for intralayer and interlayer excitons. Here, the electronic band alignment has been extracted from PL measurements26,27. We find that the interlayer exciton is the energetically lowest state at 1.39 eV, while the intralayer excitons lie at 1.65 eV (MoSe2) and 1.75 eV (WSe2), Fig. 2. The resulting excitonic binding energies are displayed in Table 1. As expected, the binding energy for interlayer excitons is reduced (150 meV for 1s) compared to the value for intralayer excitons (205 meV for MoSe2 and 177 eV for WSe2), however it is still much larger than the thermal energy. Thus, interlayer excitons are expected to be stable at room temperature and significantly contribute to the PL. Our calculations also reveal that the binding energy of intralayer excitons is considerably reduced by roughly 30% when the monolayers are stacked into a heterostructure (Table 1). This is due to an increased screening of the Coulomb potential. These results are consistent with previous theoretical studies based on DFT calculations29,37.
+Exciton dynamics. Solving the luminescence Bloch equations (the Methods section) we can resolve the dynamics of intralayer and interlayer excitons. Figure 3a shows the temporal evolution of excitP on densities, i.e., momentum-integrated exciton occupations n ¼ Q NQ, at the exemplary temperature of 77 K (Supplementary Fig. 3 and Supplementary Note 3 for 4 K and room temperature). The system is excited by a 100 fs long Gaussian pulse centered at 0.5 ps and a frequency resonant to the intralayer 1s exciton of the MoSe2 layer. We find that the optically excited coherent excitons (dashed red line in Fig. 3) decay on a timescale of hundreds of femtoseconds due to radiative emission and exciton-phonon scattering. The latter leads to the formation of incoherent intralayer excitons (IaX) through the so-called polarization-to-population transfer23,43,51,52. After about 10 ps, these intralayer excitons are completely transferred to interlayer excitons (IeX). This occurs through tunneling between energetically resonant states of the two layers and results in a transfer of holes to the WSe2 layer (Fig. 1). The subsequent phonon-induced relaxation of holes in the WSe2 layer to the valence band maximum effectively traps the holes within that layer, since tunneling back to MoSe2 is energetically forbidden. The resulting interlayer excitons have lifetimes orders of magnitudes longer than the intralayer excitons, since recombination mechanisms are suppressed due to the spatial separation of Coulomb-bound electrons and holes. We predict an interlayer exciton lifetime in the range of hundreds of microseconds at 77 K. Experimentally measured sub-nanosecond values27 suggest that the investigated radiative decay is not the dominant channel, but rather non-radiative decay e.g., induced by disorder might play the crucial role.
+To provide the microscopic background of the exciton formation and thermalization process, we now show the timeresolved and energy-resolved dynamics of incoherent intralayer and interlayer excitons. Figure 4a illustrates how 1s intralayer excitons (IaX) are created in the MoSe2 layer after optical excitation at 0.5 ps. The process is followed by a phonon-assisted thermalization and tunneling-driven depletion of these excitons. The main features of these dynamics are illustrated in representative snapshots along the energy axis at fixed times (Fig. 4b). At 0.6 ps, a significant number of excitons is still located in the MoSe2 layer. The distribution is in a strong nonequilibrium due to the efficient polarization-to-population transfer, i.e., the excitonic polarization is converted into incoherent exciton occupations with non-vanishing center-of-
+
+COMMUNICATIONS PHYSICS | (2019)2:23 | https://doi.org/10.1038/s42005-019-0122-z | www.nature.com/commsphys
+
+3
+
+ARTICLE
+
+COMMUNICATIONS PHYSICS | https://doi.org/10.1038/s42005-019-0122-z
+
+mass momentum. This is the origin of the observed peaks (green line in Fig. 4b) corresponding to the position of intersections of exciton and phonon dispersion. After the coherence has decayed (1 ps), the occupation starts to thermalize into a Boltzmann distribution (blue line). The occupation within the light cone centered around the exciton dispersion minimum E0 = 1.65 eV is lowered as a result of radiative recombination. Furthermore, tunneling of holes to the WSe2 layer causes a considerable decay of the intralayer exciton occupation (black line). Finally, the temporal evolution of the exciton occupation at a fixed energy corresponding to the 1s resonance of intralayer excitons (1.65 eV) is shown in Fig. 4c. This occupation represents the optically active exciton with vanishing center-of-mass momentum. We see how intralayer excitons are created already during the optical excitation and how they decay on a ps timescale due to tunneling of holes into the neighboring WSe2 layer.
+Figure 5a illustrates the corresponding dynamics of interlayer excitons (IeX). They first emerge at E = E0 corresponding to the energy of intralayer excitons in MoSe2. The exciton population generated at this discrete energy consequently relaxes to the band minimum of the interlayer dispersion mostly by emitting LO and TO phonons in MoSe2, which have approximately a constant energy of 36 meV. This yields a cascade-like redistribution of excitons through intermediate energy levels after a series of optical phonon emissions. The slow interaction with acoustic phonons, which provide a continuous range of energies, leads to a smoothing of the occupation distribution, but on a much larger time-scale. The energy conserving nature of the tunneling interaction eventually forces the entire system into a single Boltzmann-like distribution as can be seen in Fig. 5b, spanning over both intralayer and interlayer excitonic states.
+Figure 5c is analogous to Fig. 4c, and depicts the temporal evolution of interlayer excitons at fixed energies. The green curve first shows how the interlayer exciton occupation at the energy 1.65 eV resonant to the intralayer exciton rises with its intralayer counterpart. Driven by scattering with phonons, excitons then accumulate at the minimum of the dispersion at 1.39 eV (orange curve).
+It should be noted that the exciton-phonon scattering has an important effect on the effective tunneling rate. Since the tunneling interaction is symmetric, the effective interlayer tunneling rate is quenched by back-tunneling from energyallowed states. On a short timescale, the impact is mostly determined by the rate of the phonon-induced down-scattering (Fig. 5). As the Boltzmann distribution is formed (Fig. 5b), the temperature starts becoming an important factor. The spectral width of the IeX distribution increases at enhanced temperatures, leading to more excitons available for back-tunneling. Nevertheless, for the investigated heterostructure the change in temperature has still a relatively small effect on the IeX formation time . We find a reduction of  by approximately 200 fs from 4 K to 200 K, after which it remains nearly constant up to room temperature (Fig. 3b).
+The interlayer energy offset E in type II heterostructures (Fig. 1) turns out to be a crucial quantity for the IeX formation time. For the investigated MoSe2-WSe2 heterostructure, the offset reads 315 meV and results in an IeX formation time  = 2.61 ps at room temperature. The latter is defined as the elapsed time between the pump pulse maximum and the IeX density reaching 1 - e-1 of its maximum value. Increasing (decreasing) the offset by 100 meV, the formation time becomes considerably enhanced to  = 4.91 ps (reduced to  = 0.69 ps). This behavior can be ascribed to the reduced (enhanced) tunneling rate reflecting the increased (decreased) momentum transfer, as the interlayer energy offset E becomes larger (smaller). To put it in other words, the spectral overlap of the wavefunctions of the involved
+
+Exciton density n (a.u.) Formation time (ps)
+
+a
+1 0.8 0.6 0.4 0.2
+
+IaX (MoSe2) IeX
+
+b Temperature T (K)
+0 100 200 300 5 4 E 3T
+2
+1
+
+0
+
+0
+
+2
+
+4
+
+6
+
+8
+
+Time (ps)
+
+0 100 200 300 400
+Energy offset E (meV)
+
+Fig. 3 Momentum-integrated exciton dynamics. a Evolution of the MoSe2 intralayer (IaX) and the interlayer (IeX) 1s exciton density at 77 K after
+resonant excitation of the MoSe2 layer. The optical pulse is denoted by the blue-shaded Gaussian. The dashed line represents coherent excitons in the
+MoSe2 layer. The interlayer exciton formation occurs on a ps timescale. The radiative lifetime determining the decay of exciton densities is in the order of microseconds. b IeX formation time  as a function of the interlayer energy offset E and the temperature T. The vertical dashed line denotes the interlayer energy offset of the investigated MoSe2-WSe2 heterostructure
+
+Time (ps)
+
+3
+
+1
+
+a
+
+2.5
+
+IaX (MoSe2)
+
+0.8
+
+2 0.6
+1.5
+0.4 1
+
+0.5 0.2
+
+0
+
+0
+
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+2.5
+
+3
+
+E - E0 (meV)
+
+Exciton occupation N (a.u.)
+
+0.3 b
+0.25 0.2
+0.15 0.1
+0.05 0 0
+
+0.6 ps c
+1.0 ps
+2.0 ps
+1 ns
+
+1
+
+2
+
+E - E0 (meV)
+
+E0 = 1.65 eV ×0.3
+
+1
+
+2
+
+Time (ps)
+
+Fig. 4 Energy-resolved and time-resolved intralayer exciton dynamics. Temporal evolution of the intralayer exciton (IaX) occupation N at 77 K after resonant excitation of the MoSe2 monolayer. a The surface plot shows N as a function of time and energy, while b, c illustrate exemplary snapshots along energy and time axes (corresponding to dashed lines in a), respectively. Through exciton-phonon scattering the system equilibrates into a Boltzmann-like distribution, which decreases in amplitude due to radiative recombination and interlayer tunneling
+
+states in different layers is highly sensitive to E. The larger the overlap (small E), the more efficient is the tunneling and the
+faster is the formation time. The disorder-assisted momentum transfer function (Methods) also decreases with increasing E.
+For this reason tunneling to the higher excitonic states might be
+non-negligible considering their lower binding energies, and will
+have to be addressed in a future study.
+
+4
+
+COMMUNICATIONS PHYSICS | (2019)2:23 | https://doi.org/10.1038/s42005-019-0122-z | www.nature.com/commsphys
+
+COMMUNICATIONS PHYSICS | https://doi.org/10.1038/s42005-019-0122-z
+
+ARTICLE
+
+3
+a
+2.5 IeX 2
+1.5
+1
+
+×10-3 3 2.5 2 1.5 1
+
+Time (ps)
+
+0.5
+
+0.5
+
+Exciton occupation N (a.u.)
+
+0
+
+-0.25
+
+-0.2
+
+-0.15
+
+-0.1
+
+-0.05
+
+0
+
+E - E0 (eV)
+
+0 0.05
+
+×10-3
+20 b
+15 10
+5
+
+0.6 ps 1.0 ps 2.0 ps 1 ns
+alization Therm
+
+c
+
+E0 = 1.65 eV
+
+1.39 eV
+
+× 2 × 0.5
+
+0
+
+-0.2
+
+-0.1
+
+0
+
+E - E0 (eV)
+
+1
+
+2
+
+3
+
+4
+
+5
+
+Time (ps)
+
+Fig. 5 Energy-resolved and time-resolved interlayer exciton dynamics. Temporal evolution of the interlayer exciton (IeX) occupation N at 77 K after resonant excitation of the MoSe2 monolayer. a The surface plot shows N as a function of time and energy, while b, c illustrate exemplary snapshots along energy and time axes (corresponding to dashed lines in a), respectively. After appearing around E0 from interlayer tunneling, the interlayer excitons relax through phonon scattering
+
+coherent IaX emission (orange line, 0.6 ps), the reduced emission
+
+due to incoherent IaX (red, 1 ps), equal IaX and IeX emission
+
+(blue, 41 ps), and finally the dominant IeX emission (purple, 65
+
+ps).
+
+After 60 ps an equilibrium situation is reached that is
+
+characterized by a constant IaX-IeX intensity ratio of approxi-
+
+mately 100 (dashed lines in Fig. 6c). This is determined by the
+
+ratio of the square of the corresponding optical matrix elements |
+
+MIeX|2/|MIaX|2
+
+and
+
+exciton
+
+occupations
+
+N IeX =N IaX
+
+0
+
+0
+
+within
+
+the
+
+light cone. Since the occupations are described by a Boltzmann
+
+distribution in equilibrium, we can explicitly calculate the
+
+temperature, at which the PL ratio is 1. We find that the
+
+interlayer exciton emission dominates until approximately 200 K.
+
+Above this temperature, the thermal occupation of energetically
+
+higher intralayer excitons increases and considering the sig-
+
+nificantly larger optical matrix element for intralayer emission,
+
+the intralayer peak exceeds the emission from the interlayer
+
+exciton.
+
+A recent DFT study37 on MoSe2/WSe2 heterostructures suggests that the interlayer coupling might shift the  valley
+
+below the K valley in both layers, giving rise to a momentum
+
+mismatch between the lowest conduction and the highest valence
+
+band in the heterostructure. The resulting enhanced occupation
+
+of momentum-forbidden dark interlayer excitons and their
+
+impact on luminescence spectra (e.g., via phonon-assisted
+
+recombination) is of particular interest for future studies. In
+
+particular, for tungsten-based heterostructures the inclusion of
+
+other high-symmetry points of the Brillouin zone is expected to
+
+be important to capture the entire interlayer exciton
+
+dynamics41,53,54
+
+A modification of the interlayer energy offset could be e.g., achieved by introducing a doping of a single layer26 suggesting that the IeX formation time in heterostructures can be externally tuned. Furthermore, the interlayer wavefunction overlap and the tunneling rate could be tuned by modifying the substrate-induced screening. The smaller the dielectric constant, the stronger is the Coulomb interaction and the broader are the excitonic wavefunctions in the reciprocal space resulting in a more efficient tunneling. Finally, different layer stackings can also have a significant effect on the tunneling rate, as demonstrated by ref. 38 predicting formation times ranging from ps to sub-ps timescales.
+Photoluminescence. The exciton dynamics discussed above determines the light emission from the heterostructure. Figure 6a shows the time-resolved and energy-resolved PL spectrum at the exemplary temperature of 77 K in (Supplementary Fig. 4 and Supplementary Note 3 for 4 and 300 K). We find that in the first few ps, the emission from intralayer excitons (IaX) at 1.65 eV clearly dominates the PL. However, after approximately 41 ps, the contribution of interlayer excitons becomes pronounced. To better understand the underlying processes, we show again snapshots at fixed times and energies in Fig. 6b, c, respectively. The emission stemming from the intralayer exciton at 1.65 eV (red line in Fig. 6c) shows a maximum PL intensity in the first hundreds of femtoseconds originating from the efficient coherent emission (radiative decay of polarization on a fs timescale). The following slower decay on a time scale of tens of ps reflects the decrease of intralayer excitons due to hole tunneling to the WSe2 layer. In this time, interlayer excitons are formed (solid blue line in Fig. 6c). After approximately 41 ps, the contribution of the interlayer exciton surpasses the emission from the intralayer exciton. Snapshots of the energy-dependent PL along these characteristic times further demonstrate by far most pronounced
+
+Discussion
+In conclusion, we have presented a microscopic view on the dynamics of inter- and intralayer excitons in van der Waals heterostructures. Solving the Wannier equation, we report a binding energy of 150 meV for the interlayer exciton as well as a clear 30% reduction of the binding energy of the intralayer excitons due to the enhanced screening within a heterostructure. Solving the luminescence Bloch equations, we reveal the timeresolved and energy-resolved processes behind the formation, thermalization, and decay of interlayer excitons. We predict that tunneling of holes from the optically excited into the neighboring layer is the dominant formation channel occurring on a picosecond timescale. We demonstrate the crucial role of phonons in both their formation and subsequent relaxation dynamics. Furthermore, we suggest a possibility to externally tune the formation time of interlayer excitons by changing the interlayer energy offset in the type II heterostructure. Finally, we show that although the light emission from interlayer excitons is strongly quenched due to the spatial separation of charge carriers, they actually dominate the photoluminescence spectrum of heterostructures at temperatures below 200 K. The gained insights will trigger new experimental studies on van der Waals heterostructures. In particular, the predicted formation dynamics of interlayer excitons can be experimentally addressed by pumping and probing the intralayer exciton transition in different layers, where a clear bleaching is expected due to the efficient interlayer tunneling.
+
+Methods
+
+Binding energies. To model the interlayer exciton dynamics in heterostructures,
+
+we derive the luminescence Bloch equations for the excitonic polarization PQlhle ðtÞ ¼
+
+P
+
+D
+
+E
+
+Ãlh le ylh
+
+le
+
+lh le
+
+q q P
+
+vqþlhle QcqÀlhle Q and the incoherent exciton occupation NQ ðtÞ ¼
+
+D
+
+E
+
+Ãlh le lh le
+
+yle
+
+lh
+
+ylh
+
+le
+
+q;q q q  cqÀlhle Qvqþlhle Qvqþlhle QcqÀlhle Q ðtÞ corresponding to electron-
+
+COMMUNICATIONS PHYSICS | (2019)2:23 | https://doi.org/10.1038/s42005-019-0122-z | www.nature.com/commsphys
+
+5
+
+ARTICLE
+
+COMMUNICATIONS PHYSICS | https://doi.org/10.1038/s42005-019-0122-z
+
+Time (ps)
+
+a
+80 IeX
+
+60
+
+IaX
+
+40
+
+20
+
+0
+
+1.2
+
+1.3
+
+1.4
+
+1.5
+
+1.6
+
+1.7
+
+Energy (eV)
+
+105 b
+
+c
+
+0.6 ps
+
+100 1.2 ps IaX
+
+100 10-1 10-2 10-3 10-4 10-5 10-6 1.8
+IaX IeX
+
+PL (a.u.)
+
+10-5 65 ps IeX
+
+41 ps
+
+1.2
+
+1.4
+
+1.6
+
+1.8 0
+
+20
+
+40
+
+60
+
+80
+
+Energy (eV)
+
+Time (ps)
+
+Fig. 6 Time-resolved and energy-resolved photoluminescence. PL of the investigated heterostructure at 77 K plotted a over time and energy (logarithmic) and showing snapshots taken at specific b times and c energies. The chosen energies correspond to the position of the interlayer (IeX) and MoSe2 intralayer (IaX) exciton resonance, respectively. The solid lines in c represent the signals stemming from the interlayer or intralayer emission only, while the dashed lines also include the spectral overlap with the respective other peak
+
+hole pair correlations44. Here, we have introduced q as excitonic wavefunctions in momentum space, vðyÞ; cðyÞ as operators for annihilation (creation) of valence- and
+conduction band electrons as well as relative q and center-of-mass momenta Q with the coefficients  = me/(mh + me) and  = mh/(mh + me) describing the relative electron and hole masses.
+To obtain the excitonic binding energies and wave functions, we solve the Wannier equation9,43,46
+
+h2q2 lhle X lhle lhle
+
+lh le lh le
+
+q À VkÀqk ¼ Eb q ;
+
+ð1Þ
+
+2lhle k
+
+where  is the reduced mass, Eb the excitonic binding energy, and Vklhle the Coulomb matrix element for the electron-hole interaction. Solving the Poisson
+equation for two aligned homogeneous slabs, we obtain an effective 2D Coulomb potential Vklhle ¼ k0leh20le ðkÞ with a dielectric function lhle ðkÞ, depending on the momentum transfer k and the overall composition of the heterostructure,
+Supplementary Note 1 for more details.
+
+= V(|kb - ka|)Vz ua|ubuc, where u are the lattice-periodic parts of the Bloch waves, which are integrated over one unit cell (uc). This integral was obtained from
+density functional theory calculations, yielding an overlap of approximately 1 × 10 -2. The calculations were carried out using the gpaw package49. The wave function
+was expanded on a grid and exchange-correlation effects were represented using the PBE exchange-correlation functional59. The details behind this process are written in Supplementary Note 4. Finally, the Fourier transform of the in-plane
+
+component of the disorder potential reads56 Vðjkb À kajÞ ¼
+
+pffiffiffi  jk Àk j2L2 34 b aC
+
+LC= 1 þ 2
+
+with LC as the correlation length. It has been set to 1 nm in
+
+accordance with the excitonic Bohr radius60, an approximation that applies for
+
+short-range disorder61,62.
+
+Applying the Heisenberg equation of motion, we obtain the luminescence Bloch
+
+equations for vdW heterostructures
+
+0
+
+1
+
+_1
+
+@  1 X A
+
+P ¼ EP þ i À r þ
+
+P P;
+
+ð2Þ
+
+ih
+
+2
+
+Dynamics. Equations of motion for the exciton polarization and the exciton
+occupations are derived taking into account all relevant interaction mechanisms in
+the low density regime. The carrier-phonon matrix elements are taken from DFT calculations55 and are treated in analogy to refs. 22,23,52. The interaction
+mechanism that distinguishes the exciton dynamics in a vdW heterostructure from
+the dynamics in a bare TMD monolayer is the tunneling of carriers between layers. P ab y
+This process is included via the tunneling Hamilton operator HT ¼ a;b T abab, where a, b are compound indices containing layer, band and momentum of the electron. The coupling element T is given by the overlap integral a|VT|b of Bloch waves  with the interlayer potential VT. The latter can be separated into an out-of-plane component Vz and an in-plane disorder potential V56. The first is given by a step function, which is only non-zero within the region between the two
+layers and its value was fixed to 5 eV corresponding to the ionization energy of TMD monolayers57,58. The tunneling matrix element can then be expressed as Tab
+
+X  2
+
+
+
+_
+
+  
+
+
+
+scatt
+
+N ¼
+
+P P þT N À 2r N;0 þ N ;
+
+ð3Þ
+
+
+
+where the excitonic compound indices ,  contain center of mass momentum and
+
+electron/hole layers. The dynamics of the exciton polarization P(t) is determined
+
+by the Rabi frequency  containing the driviÀng Áoptical pump pulse and the decay
+
+processes stemming from radiative damping
+
+
+r
+
+and exciton-phonon interaction
+
+
+
+
+
+P . The latter has been obtained by truncating the electron-phonon interaction
+
+by a second order Born-Markov approximation44,46, giving rise to energy-
+
+dependent scattering rates. Those incorporate all exciton-phonon scattering
+
+channels, i.e., all energy allowed exciton transitions, weighted by the excitonic
+
+scattering cross-sections, electron-phonon couplings and the occupations of
+
+6
+
+COMMUNICATIONS PHYSICS | (2019)2:23 | https://doi.org/10.1038/s42005-019-0122-z | www.nature.com/commsphys
+
+COMMUNICATIONS PHYSICS | https://doi.org/10.1038/s42005-019-0122-z
+
+ARTICLE
+
+involved phonon modes. The dynamics of the incoherent exciton occupation N(t)
+
+is determined by formation processes driven by phonon-assisted decay of Àthe Á
+
+excitonic polarization, the radiative decay, and exciton-phonon scattering
+
+N scatt
+
+
+driving the excited system towards an equilibrium Boltzmann distribution23,52.
+
+Note that that radiative decay scales with N,0 = NQ,0, where only states within
+
+the light cone with a nearly zero center-of-mass momentum Q = 0 can contribute.
+
+Finally, T describes resonant tunneling between different layers. It depends on the occupation difference (N = N - N) of the involved excitonic states and causes
+
+the formation of interlayer excitons. It was obtained by applying the same
+
+methodology as for P. The explicit form of the scattering rates is given in
+
+Supplementary Note 5.
+
+Code availability. The code used to calculate the findings of this study is available from the corresponding author upon request.
+
+Data availability
+The data that supports the findings of this study is available from the corresponding author upon request.
+
+Received: 4 May 2018 Accepted: 30 January 2019
+
+References
+1. Geim, A. K. & Grigorieva, I. V. Van der waals heterostructures. Nature 499, 419-425 (2013).
+2. Wang, Q. H. et al. Electronics and optoelectronics of two-dimensional transition metal dichalcogenides. Nat. Nanotechnol. 7, 699-712 (2012).
+3. Mak, K. F. & Shan, J. Photonics and optoelectronics of 2d semiconductor transition metal dichalcogenides. Nat. Photonics 10, 216-226 (2016).
+4. Schaibley, J. R. et al. Valleytronics in 2d materials. Nat. Rev. Mater. 1, 16055 (2016).
+5. Lopez-Sanchez, O. et al. Ultrasensitive photodetectors based on monolayermos2. Nat. Nanotechnol. 8, 497-501 (2013).
+6. Pospischil, A. & Mueller, T. Optoelectronic devices based on atomically thin transition metal dichalcogenides. Appl. Sci. 6, 78 (2016).
+7. Ramasubramaniam, A. Large excitonic effects in monolayers of molybdenum and tungsten dichalcogenides. Phys. Rev. B 86, 115409 (2012).
+8. He, K. et al. Tightly bound excitons in monolayer wse2. Phys. Rev. Lett. 113, 026803 (2014).
+9. Berghäuser, G. & Malic, E. Analytical approach to excitonic properties of mos2. Phys. Rev. B 89, 125309 (2013).
+10. Mak, K. F., Lee, C., Hone, J., Shan, J. & Heinz, T. F. Atomically thinmos2: a new direct-gap semiconductor. Phys. Rev. Lett. 105, 136805 (2010).
+11. Ugeda, M. M. et al. Giant bandgap renormalization and excitonic effects in a monolayer transition metal dichalcogenide semiconductor. Nat. Mater. 13, 1091-1095 (2014).
+12. Li, Y. et al. Measurement of the optical dielectric function of monolayer transition-metal dichalcogenides: Mos2, mose2, ws2, and wse. Phys. Rev. B 90, 205422 (2014).
+13. Steinhoff, A. et al. Efficient excitonic photoluminescence in direct and indirect band gap monolayer mos2. Nano Lett. 15, 6841-6847 (2015).
+14. Wang, G. et al. Excitons in atomically thin transition metal dichalcogenides. Rev. Mod. Phys. 90, 021001 (2018).
+15. Hanbicki, A. T., Currie, M., Kioseoglou, G., Friedman, A. L. & Jonker, B. T. Measurement of high exciton binding energy in monolayer transition-metal dichalcogenides ws2 and wse2. Solid State Commun. 203, 16-20 (2015).
+16. Chernikov, A. et al. Exciton binding energy and nonhydrogenic rydberg series in monolayer ws2. Phys. Rev. Lett. 113, 076802 (2014).
+17. Arora, A. et al. Excitonic resonances in thin films ofwse2: from monolayer to bulk material. Nanoscale 7, 10421-10429 (2015).
+18. Arora, A., Nogajewski, K., Molas, M., Koperski, M. & Potemski, M. Exciton band structure in layeredmose2: from a monolayer to the bulk limit. Nanoscale 7, 20769-20775 (2015).
+19. Zhang, X.-X., You, Y., Zhao, S. Y. F. & Heinz, T. F. Experimental evidence for dark excitons in monolayer wse2. Phys. Rev. Lett. 115, 257403 (2015).
+20. Zhang, X.-X. et al. Magnetic brightening and control of dark excitons in monolayer wse2. Nat. Nanotechnol. 12, 883-888 (2017).
+21. Molas, M. R. et al. Brightening of dark excitons in monolayers of semiconducting transition metal dichalcogenides. 2D Mater. 4, 021003 (2017).
+22. Selig, M. et al. Excitonic linewidth and coherence lifetime in monolayer transition metal dichalcogenides. Nat. Commun. 7, 13279 (2016).
+
+23. Selig, M. et al. Dark and bright exciton formation, thermalization, and photoluminescence in monolayer transition metal dichalcogenides. 2D Mater. 5, 035017 (2018).
+24. Feierabend, M., Berghäuser, G., Knorr, A. & Malic, E. Proposal for dark exciton based chemical sensors. Nat. Commun. 8, 14776 (2017).
+25. Fogler, M. M., Butov, L. V. & Novoselov, K. S. High-temperature superfluidity with indirect excitons in van der waals heterostructures. Nat. Commun. 5, 4555 (2014).
+26. Rivera, P. et al. Observation of long-lived interlayer excitons in monolayer MoSe2-Wse2 heterostructures. Nat. Commun. 6, 6242 (2015).
+27. Nagler, P. et al. Interlayer exciton dynamics in a dichalcogenide monolayer heterostructure. 2D Mater. 4, 025112 (2017).
+28. Gao, S., Yan, L. & Spataru, C. D. Interlayer coupling and gate-tunable excitons in transition metal dichalcogenide heterostructures. Nano Lett. 17, 7809 (2017).
+29. Latini, S., Winther, K. T., Olsen, T. & Thygesen, K. S. Interlayer excitons and band alignment in mos2/hbn/wse2 van der waals heterostructures. Nano Lett. 17, 938-945 (2016).
+30. Yu, Y. et al. Equally efficient interlayer exciton relaxation and improved absorption in epitaxial and nonepitaxial mos2/ws2 heterostructures. Nano Lett. 15, 486 (2015).
+31. Calman, E. V. et al. Indirect excitons in van der waals heterostructures at room temperature. Nat. Commun. 9, 1895 (2018).
+32. Förg, M. et al. Cavity-control of bright and dark interlayer excitons in van der waals heterostructures. Preprint at https://arxiv.org/abs/1710.00990 (2017).
+33. Nagler, P. et al. Giant zeeman splitting inducing near-unity valley polarization in van der waals heterostructures. Nat. Commun. 8, 1551 (2017).
+34. Chaves, A., Azadani, J. G., Özçelik, V. O., Grassi, R. & Low, T. Electrical control of inter-layer excitons in van der waals heterostructures. Phys. Rev. B 98, 121302 (2018).
+35. Wu, F., Lovorn, T. & MacDonald, A. H. Theory of optical absorption by interlayer excitons in transition metal dichalcogenide heterobilayers. Phys. Rev. B 97, 035306 (2018).
+36. Manolatou, C., Wang, H., Chan, W., Tiwari, S. & Rana, F. Radiative and nonradiative exciton energy transfer in monolayers of two-dimensional group-vi transition metal dichalcogenides. Phys. Rev. B 93, 155422 (2016).
+37. Gillen, R. & Maultzsch, J. Interlayer excitons in mose2/wse2 heterostructures from first principles. Phys. Rev. B 97, 165306 (2018).
+38. Zhang, J. et al. Interlayer-state-coupling dependent ultrafast charge transfer in mos2/ws2 bilayers. Adv. Sci. 4, 1700086 (2017).
+39. Hong, X. et al. Ultrafast charge transfer in atomically thin mos2/ws2 heterostructures. Nat. Nanotechnol. 9, 682-686 (2014).
+40. Rivera, P. et al. Valley-polarized exciton dynamics in a 2d semiconductor heterostructure. Science 12, 688-691 (2016).
+41. Miller, B. et al. Long-lived direct and indirect interlayer excitons in van der waals heterostructures. Nano Lett. 17, 5229-5237 (2017).
+42. Florian, M. et al. The dielectric impact of layer distances on exciton and trion binding energies in van der waals heterostructures. Nano Lett. 18, 2725-2732 (2018).
+43. Kira, M. & Koch, S. W. Many-body correlations and excitonic effects in semiconductor spectroscopy. Quantum Electron. 30, 155-296 (2006).
+44. Thränhardt, A., Kuckenburg, S., Knorr, A., Meier, T. & Koch, S. W. Quantum theory of phonon-assisted exciton formation and luminescence in semiconductor quantum wells. Phys. Rev. B 62, 2706 (2000).
+45. Rossi, F. & Kuhn, T. Theory of ultrafast phenomena in photoexcited semiconductors. Rev. Mod. Phys. 74, 895 (2002).
+46. Haug, H. & Koch, S. W. Quantum Theory of the Optical and Electronic Properties of Semiconductors. 5 edn, (World Scientific Publishing Co. Pre. Ltd., Singapore, 2004).
+47. Kira, M., Jahnke, F., Hoyer, W. & Koch, S. W. Quantum theory of spontaneous emission and coherent effects in semiconductor microstructures. Quantum Electron. 23, 189-279 (1999).
+48. Moody, G. et al. Intrinsic homogeneous linewidth and broadening mechanisms of excitons in monolayer transition metal dichalcogenides. Nat. Commun. 6, 8315 (2015).
+49. Enkovaara, J. et al. Electronic structure calculations with GPAW: a real-space implementation of the projector augmented-wave method. J. Phys. 22, 253202 (2010).
+50. Keldysh, L. V. Coulomb interaction in thin semiconductor and semimetal films. JETP Lett. 29, 658 (1978).
+51. Koch, S. W., Kira, M., Khitrova, G. & Gibbs, H. M. Semiconductor excitons in new light. Nat. Mater. 5, 523-531 (2006).
+52. Brem, S., Berghaeuser, G., Selig, M. & Malic, E. Exciton relaxation cascade in two-dimensional transition-metal dichalcogenides. Sci. Rep. 8, 8238 (2018).
+53. Kunstmann, J. et al. Momentum-space indirect interlayer excitons in transition-metal dichalcogenide van der waals heterostructures. Nat. Phys. 14, 801-805 (2018).
+
+COMMUNICATIONS PHYSICS | (2019)2:23 | https://doi.org/10.1038/s42005-019-0122-z | www.nature.com/commsphys
+
+7
+
+ARTICLE
+
+COMMUNICATIONS PHYSICS | https://doi.org/10.1038/s42005-019-0122-z
+
+54. Hanbicki, A. T. et al. Double indirect interlayer exciton in a mose2/wse2 van der waals heterostructure. ACS Nano 12, 4719-4726 (2018).
+55. Jin, Z., Li, X., Mullen, J. T. & Kim, K. W. Intrinsic transport properties of electrons and holes in monolayer transition-metal dichalcogenides. Phys. Rev. B 90, 045422 (2014).
+56. Li, M. O., Esseni, D., Snider, G., Jena, D. & Xing, H. G. Single particle transport in two-dimensional heterojunction interlayer tunneling field effect transistor. J. Appl. Phys. 115, 074508 (2013).
+57. Keyshar, K. et al. Experimental determination of the ionization energies ofmose2, ws2, and mos2 on sio2 using photoemission electron microscopy. ACS Nano 11, 8223-8230 (2017).
+58. McDonnell, S. et al. Hole contacts on transition metal dichalcogenides: Interface chemistry and band alignments. ACS Nano 8, 6265-6272 (2014).
+59. Perdew, J. P., Burke, K. & Ernzerhof, M. Generalized gradient approximation made simple. Phys. Rev. Lett. 77, 3865-3868 (1996).
+60. Wang, H. et al. Radiative lifetimes of excitons and trions in monolayers of the metal dichalcogenide mos2. Phys. Rev. B 93, 045407 (2016).
+61. Hoffmann, K. H. & Schreiber, M. Computational Statistical Physics: From Billiards to Monte Carlo. 1 edn, (Springer, Berlin Heidelberg, 2002).
+62. Stefano, O. D., Savasta, S. & Girlanda, R. Theory of local optical spectroscopy of quantum wires with interface fluctuations. Phys. Rev. B 93, 2302 (2016).
+Acknowledgements
+This project has received funding from the European Union's Horizon 2020 research and innovation program under grant agreement No 696656. Furthermore, we acknowledge financial support from the Swedish Research Council (VR), Stiftelsen Olle Engkvist, and the Deutsche Forschungsgemeinschaft (DFG) through SFB 951 and the School of Nanophotonics (SFB 787).
+
+calculations. S.O. wrote the main bulk of the manuscript, with the help of multiple revisions by mainly S.B. and E.M. T.K. provided fruitful discussions and experimental data to compare to.
+Additional information
+Supplementary information accompanies this paper at https://doi.org/10.1038/s42005019-0122-z.
+Competing interests: The authors declare no competing interests.
+Reprints and permission information is available online at http://npg.nature.com/ reprintsandpermissions/
+Publisher's note: Springer Nature remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.
+Open Access This article is licensed under a Creative Commons Attribution 4.0 International License, which permits use, sharing, adaptation, distribution and reproduction in any medium or format, as long as you give appropriate credit to the original author(s) and the source, provide a link to the Creative Commons license, and indicate if changes were made. The images or other third party material in this article are included in the article's Creative Commons license, unless indicated otherwise in a credit line to the material. If material is not included in the article's Creative Commons license and your intended use is not permitted by statutory regulation or exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this license, visit http://creativecommons.org/ licenses/by/4.0/.
+
+Author contributions
+E.M. conceived and supervised the project. S.O. derived the theory and developed the code, based on previous work by S.B. and M.S. C.L., M.K., and P.E. performed the DFT
+
+© The Author(s) 2019
+
+8
+
+COMMUNICATIONS PHYSICS | (2019)2:23 | https://doi.org/10.1038/s42005-019-0122-z | www.nature.com/commsphys
+
+
