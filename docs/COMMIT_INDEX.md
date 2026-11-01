@@ -95,7 +95,8 @@ T15 之后的科研推进（T16/T17 门槛轮次）与本轮复核不在上表�
 | 8 | **大目标 A**：DFT→TB 自拟合管线——SK 模型参数化（深拷贝隔离）、`fitting/` 模块（参数向量/投影权重/残差/最小二乘）、合成往返验证；投影公式修正波及 0.74 数字更正 | `b9eba5e` … |
 | 9 | **大目标 B**：Wannier90 互操作——`_hr.dat` 读写、周期插值模型、solver/带隙/DOS 全链接入、合成往返验证 | `62315bd` |
 | 10 | **大目标 C**：转角 TMD 层间激子（T17 收官）——单带连续 moiré 模型（四个解析锚点）、moiré 质量 → 约化质量 → Keldysh DVR 管线（t=0 衔接 Berkelbach 链）、Eb(θ) 示例；顺带修正 moiré 质量的 2 倍因子与 vb 带顶索引 | `f47597d` … |
+| 13 | **大目标 C 收官**：层状介质屏蔽相互作用（Ovesen 2019 Poison 板模型、导纳递推稳定化）+ 任意势激子入口 + 文献对账（层间 161 vs 150 meV 等，~10% 闭合）；kp_tmd H_cub 修正、k·p moiré、层间 Keldysh 推广 | `4db616a` … |
 | 12 | **大目标 C 剩余**：完整 k·p 层哈密顿量 moiré TMD——TwistedTMDKp（Kormányos 4×4 层块）+ interlayer_exciton_report_kp（γ=0 衔接 Berkelbach 链）；单带 vs k·p Eb(θ) 吻合 1–3%；顺带修复 kp_tmd 的 H_cub 转录错误（C₃ 恢复，Eq. 4e 对账） | `4db616a` … |
 | 11 | **大目标 D**：通用多层堆叠引擎——`structure/multilayer.py`（层序/2H/3R/Bernal/公度转角重合胞）+ `engine/multilayer.py`（Harrison d⁻² 层间耦合自动生成、蜂窝正交 + sp³d⁵ 非正交多层模型、SK 块预计算装配）；锚点：2H 双层逐坐标回归、AB 双层与 BilayerGrapheneModel 逐位一致、ABA/ABC K 点精确谱、解耦极限含一般 k（rot180 镜像规范回归）；**负结果**：Zahid 表 + 现约定下单层一般 k 点跨 k 带交叠（金属化），gap-vs-N 对账被 T16-SK 阻塞（测试固化）；顺带修正 moire_effective_mass 漏提交的因子 2（`485ec6e`） | `485ec6e` … `a0b14ec` |
 
-完整列表见 `git log --oneline 6cf5dbe..HEAD`（共 100 条，含 1 条 revert；2026-10-30 实测（以 git log 为准））。
+完整列表见 `git log --oneline 6cf5dbe..HEAD`（共 105 条，含 1 条 revert；2026-11-02 实测（以 git log 为准））。
