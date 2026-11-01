@@ -21,6 +21,12 @@
      K 点 k·p 哈密顿量（Eq. 24 及 H_D/H_as/H_3w/H_cub 分解，Eq. 25-29）；
      材料参数 E_bg, γ, α, β, κ, η（Tables 8/9，DFT 与 GW 两套）；
      自旋劈裂 2Δ_vb, 2Δ_cb（Tables 3/4）。
+   - **2026-10-30 更正**：H_cub 非对角项曾误转录为 η(q₊^τ)³；原文
+     Eq. (4e) 为 −(η₁/2)·q²·q₋^τ（与 H_D 同角谐波，C₃ 协变）。
+     质量/劈裂锚点对立方项不敏感（本征值贡献 O(q⁴)），由新增的
+     单层谱 C₃ 不变性测试抓出（tests/test_kp_tmd.py::TestC3Symmetry）；
+     修正后 C₃ 与时间反演同时精确。对角立方项 H_cub,2（Eq. 4f）的
+     参数未列入 Tables 8/9（正文明确 not shown），按文献省略。
 
 2. **Kormányos et al. 2013（MoS₂ 三带/七带细节、trigonal warping）**
    A. Kormányos, V. Zólyomi, N. D. Drummond, G. Burkard,

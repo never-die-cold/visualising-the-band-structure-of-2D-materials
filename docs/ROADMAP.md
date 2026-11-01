@@ -91,8 +91,16 @@
    T=0 解耦/C₃/二阶弱耦合/平带化四个解析锚点）+
    `analysis/interlayer_exciton.py`（moiré 质量 → 约化质量 → Keldysh DVR；
    t=0 衔接 Berkelbach 标定链 0.54–0.594 eV；θ 5°→1° 时 E_b 0.58→0.91 eV，
-   平带化增强与文献定性一致）。⬜ 剩余：完整 k·p 层哈密顿量替换单带
-   近似、层间距离修正的 Keldysh 推广、与转角 TMD 激子文献的定量对账
+   平带化增强与文献定性一致）。
+   ✅ **完整 k·p 层哈密顿量版已交付（2026-10-30）**：
+   `engine/moire_tmd.py::TwistedTMDKp`（Kormányos 4×4 层块替换单带，
+   含 SOC/翘曲/电子-空穴不对称；C₃ 低能窗口误差随壳层指数收敛
+   3.5e-12 @ N=4；解耦 moiré 质量 = Kormányos 单层质量）+
+   `interlayer_exciton_report_kp`（γ=0 时 μ=0.2495 衔接 Berkelbach 链，
+   Eb=0.553 eV；θ 5°→1° 时 Eb 0.58→0.91 eV）；单带 vs k·p 的 Eb(θ)
+   在 0.5°–5° 吻合到 1–3%（示例面板 (c) 交叉验证）。
+   顺带修复 `kp_tmd.py` 的 H_cub 转录错误（C₃ 恢复，见 REFERENCES [1]）。
+   ⬜ 剩余：层间距离修正的 Keldysh 推广、与转角 TMD 激子文献的定量对账
 4. ⬜ 大超胞求解器优化（连续模型已规避大超胞；稀疏化按需）
 5. ✅ **通用多层堆叠引擎（大目标 D，2026-10-30）**：
    `structure/multilayer.py`（N 层构建器：显式层序 / 2H / 3R / Bernal /
