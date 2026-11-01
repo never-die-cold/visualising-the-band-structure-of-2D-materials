@@ -177,6 +177,30 @@
      sp³d⁵ 节 2026-10-30 补记），gap-vs-N 序列（常用取整
      1.8→1.5→1.3→1.2 eV）不可达；出路见该节。
 
+16. **Ovesen, Brem, Malic et al. 2019（层间激子束缚能对账，大目标 C 收官）**
+   S. Ovesen, S. Brem, C. Linderälv, M. Kuisma, T. Korn, P. Erhart,
+   M. Selig, E. Malic,
+   "Interlayer exciton dynamics in van der Waals heterostructures",
+   *Communications Physics* **2**, 23 (2019),
+   [DOI:10.1038/s42005-019-0122-z](https://doi.org/10.1038/s42005-019-0122-z)
+   （原文+补充材料 PDF：`papers/ovesen2019/`）
+   - 用途：两层介质板堆叠的屏蔽相互作用模型（Supplementary Note 1：
+     Poisson 方程逐板求解，ε(k) 闭式）；MoSe₂/WSe₂ 异质结构的
+     1s/2s/3s 层间与层内激子束缚能（Table 1：层间 1s **150 meV**，
+     层内 205/177 meV，SiO₂ 衬底+真空环境）。
+   - 模型参数（其 Supplementary Note 1）：介质板厚度 d₁=d₂=0.645 nm、
+     板间距 R=0、ε_MoSe₂=16.5、ε_WSe₂=15.1、空气 1 / SiO₂ 3.9；
+     电荷平面取板中心。
+   - 对账（`analysis/layered_dielectric.py`，2026-10-30）：本实现的
+     Poisson 传输矩阵/导纳递推解 + Kormányos Tables 3/4 平均带质量
+     → 层间 161 meV（+7%，对堆叠顺序与数值旋钮全稳定）、
+     层内 216/195 meV（+5%/+10%）。两条独立参数链在 ~10% 水平闭合。
+   - 实现注记：不转录其 ε(k) 闭式（PDF 分式易错），直接解同一
+     Poisson 问题并以原文声明的四个极限做锚点；大 k 稳定化用
+     导纳（Riccati/tanh）递推——全局矩阵解在 k·厚度 ≳ 12 失去
+     精度（e^{k·厚度} 条件数），且 k ∈ [4, 8] 过渡带的形状比在
+     float64 下不可用（已规避并测试固化）。
+
 ## 已删除/待定
 （无）
 

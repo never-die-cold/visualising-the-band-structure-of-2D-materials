@@ -271,9 +271,74 @@ def solve_exciton(mu_over_m0: float = 0.25,
     all_bound = eig[eig < 0]
     bound = all_bound[:n_levels]
     status = 'no-bound-state' if not len(bound) else 'partial-bound-spectrum' if len(bound) < n_levels else 'bound-states-found'
+    return _make_result(bound, len(all_bound), status, r0, eps_env,
+                        mu_over_m0, float(r_max), int(n_basis), interlayer_d,
+                        n_levels)
+
+
+def solve_exciton_with_potential(potential, r_max: float,
+                                 mu_over_m0: float,
+                                 n_levels: int = 4,
+                                 n_basis: int = 250,
+                                 n_quad: int = 6000) -> ExcitonResult:
+    """以**任意径向势**求解激子（DVR 核与 :func:`solve_exciton` 相同）。
+
+    参数:
+        potential: 可调用对象 V(r) → eV（r > 0 的数组；r→0 处须有限或
+            弱于 1/r——核 r·V(r) 在 r=0 有限即可）。
+        r_max: 径向盒子半径 (Å)，须显式给出（自适应逻辑依赖 r₀ 分支，
+            自定义势无此信息）。
+        mu_over_m0 / n_levels / n_basis / n_quad: 同 :func:`solve_exciton`。
+
+    典型用途：层状介质模型（``analysis.layered_dielectric``）的实空间
+    势——文献对账（Ovesen 2019）即由此进入。
+    """
+    r_max = finite_scalar(r_max, 'r_max', positive=True)
+    mu_over_m0 = finite_scalar(mu_over_m0, 'mu_over_m0', positive=True)
+    n_basis = integer(n_basis, 'n_basis')
+    n_quad = integer(n_quad, 'n_quad', minimum=3)
+    n_levels = integer(n_levels, 'n_levels')
+    if n_levels > n_basis:
+        raise ValueError('n_levels cannot exceed n_basis')
+    if n_quad < n_basis + 1:
+        raise ValueError('n_quad must be at least n_basis + 1 to resolve the basis')
+    hbar2_over_2mu = HBAR2_OVER_2M0 / mu_over_m0
+
+    zeros = special.jn_zeros(0, n_basis)
+    kn = zeros / r_max
+    norms = 0.5 * r_max ** 2 * special.j1(zeros) ** 2
+    T = np.diag(hbar2_over_2mu * kn ** 2 * norms)
+
+    r = np.linspace(0.0, r_max, n_quad)
+    dr = r[1] - r[0]
+    v_vals = np.asarray(potential(r[1:]), dtype=float)
+    if v_vals.shape != (n_quad - 1,) or not np.isfinite(v_vals).all():
+        raise ValueError('potential 必须返回 (len(r)-1,) 的有限数组')
+    w = np.zeros(n_quad)
+    w[1:] = v_vals * r[1:]
+    qw = np.full(n_quad, dr)
+    qw[0] *= 0.5
+    qw[-1] *= 0.5
+    J = special.j0(np.outer(kn, r))
+    V = ((J * w) * qw) @ J.T
+
+    H = T + V
+    eig = scipy.linalg.eigh(H, np.diag(norms), eigvals_only=True)
+    all_bound = eig[eig < 0]
+    bound = all_bound[:n_levels]
+    status = 'no-bound-state' if not len(bound) else 'partial-bound-spectrum' if len(bound) < n_levels else 'bound-states-found'
+    return _make_result(bound, len(all_bound), status, None, 1.0,
+                        mu_over_m0, float(r_max), int(n_basis), None,
+                        n_levels)
+
+
+def _make_result(bound, n_all_bound: int, status: str, r0, eps_env: float,
+                 mu_over_m0: float, r_max: float, n_basis: int,
+                 interlayer_d, n_levels: int) -> ExcitonResult:
     return ExcitonResult(energies=bound, binding_1s=float(-bound[0]) if len(bound) else None,
                          r0=r0, eps_env=eps_env,
                          mu_over_m0=mu_over_m0,
                          r_max=float(r_max), n_basis=int(n_basis),
                          interlayer_d=float(interlayer_d or 0.0), status=status,
-                         requested_levels=n_levels, bound_states_in_basis=len(all_bound))
+                         requested_levels=n_levels,
+                         bound_states_in_basis=int(n_all_bound))
